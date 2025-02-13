@@ -9,36 +9,34 @@ Class {
 	#superclass : 'Object',
 	#instVars : [
 		'inputMethods',
-		'types',
-		'methods',
-		'methodsWithSingleReturn'
+		'methodsWithSingleReturn',
+		'exploredTypes',
+		'exploredMethods'
 	],
 	#category : 'TypeMe-Objects',
 	#package : 'TypeMe',
 	#tag : 'Objects'
 }
 
-{ #category : 'as yet unclassified' }
+{ #category : 'extracting' }
 TypeMe class >> extractTypesForClass: className [
 
 	| typerInstance classObj collectedMethods |
-	
 	collectedMethods := OrderedCollection new.
-	
+
 	classObj := Smalltalk globals classNamed: className.
 	classObj ifNil: [
 		self error:
 			'Class ' , className , ' is not found in the image. Aborting.' ].
-		
-	collectedMethods addAll: classObj methods.
-	collectedMethods addAll: classObj class methods.	
 
-	typerInstance := self new.
-	typerInstance inputMethods: collectedMethods .
+	collectedMethods addAll: classObj methods.
+	collectedMethods addAll: classObj class methods.
+
+	typerInstance := self new initialize: collectedMethods.
 	^ typerInstance runHeuristics
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'extracting' }
 TypeMe class >> extractTypesForClasses: classNameCollection [
 
 	| typerInstance collectedMethods |
@@ -54,70 +52,106 @@ TypeMe class >> extractTypesForClasses: classNameCollection [
 		collectedMethods addAll: classObj methods.
 		collectedMethods addAll: classObj class methods ].
 
-	typerInstance := self new.
-	typerInstance inputMethods: collectedMethods.
+	typerInstance := self new initialize: collectedMethods.
 	^ typerInstance runHeuristics
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'extracting' }
 TypeMe class >> extractTypesForImage [
 
 	| typerInstance collectedMethods |
 	collectedMethods := Smalltalk globals methods.
-	
 
-	typerInstance := self new.
-	typerInstance inputMethods: collectedMethods.
+
+	typerInstance := self new initialize: collectedMethods.
 	^ typerInstance runHeuristics
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'extracting' }
 TypeMe class >> extractTypesForMethod: methodName [
 
 	| typerInstance collectedMethods |
-	
-	collectedMethods := (Smalltalk globals methods) select: [ :m | m selector = methodName ].
-	
-	typerInstance := self new.
-	typerInstance inputMethods: collectedMethods.
+	collectedMethods := Smalltalk globals methods select: [ :m |
+		                    m selector = methodName ].
+
+	typerInstance := self new initialize: collectedMethods.
 	^ typerInstance runHeuristics
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'extracting' }
 TypeMe class >> extractTypesForMethods: methodNameCollection [
 
 	| typerInstance collectedMethods |
-	
-	collectedMethods := (Smalltalk globals methods) select: [ :m | methodNameCollection contains: (m selector) ].
-	
-	typerInstance := self new.
-	typerInstance inputMethods: collectedMethods.
+	collectedMethods := Smalltalk globals methods select: [ :m |
+		                    methodNameCollection contains: m selector ].
+
+	typerInstance := self new initialize: collectedMethods.
 	^ typerInstance runHeuristics
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'extracting' }
 TypeMe class >> extractTypesForPackage: packageName [
 
 	| typerInstance collectedMethods |
-	collectedMethods := (Package organizer packageNamed: packageName ) methods.
+	collectedMethods := (Package organizer packageNamed: packageName)
+		                    methods.
 
-	typerInstance := self new.
-	typerInstance inputMethods: collectedMethods.
+	typerInstance := self new initialize: collectedMethods.
 	^ typerInstance runHeuristics
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'extracting' }
 TypeMe class >> extractTypesForPackages: packageNameCollection [
 
 	| typerInstance collectedMethods |
-	collectedMethods := packageNameCollection flatCollect: [:packageName | (Package organizer packageNamed: packageName ) methods].
+	collectedMethods := packageNameCollection flatCollect: [ :packageName |
+		                    (Package organizer packageNamed: packageName)
+			                    methods ].
 
-	typerInstance := self new.
-	typerInstance inputMethods: collectedMethods.
+	typerInstance := self new initialize: collectedMethods.
 	^ typerInstance runHeuristics
 ]
 
-{ #category : 'data aggregation' }
+{ #category : 'printing' }
+TypeMe class >> print: typeCollection to: aFormat [
+
+	aFormat = 'csv' ifTrue: [ self printToCSV: typeCollection ]
+	
+	
+]
+
+{ #category : 'printing' }
+TypeMe class >> printToCSV: typeCollection [
+
+	| typesFile |
+	typesFile := FileLocator
+		             fromPath:
+		             'pharo-local/iceberg/typeMe/types.csv' asPath
+		             ifNone: [].
+
+	typesFile asFileReference writeStreamDo: [ :file |
+		ZnBufferedWriteStream
+			on: file
+			do: [ :out |
+				| writer |
+				writer := NeoCSVWriter on: out.
+				writer writeHeader: { #Package. #Class. #Selector. #Types }.
+				typeCollection do: [ :each | writer nextPut: each ] ] ]
+]
+
+{ #category : 'analyzing' }
+TypeMe >> checkForAnomaly: typeCollection [
+
+	| intersection typeCollectionMethods|
+	
+	typeCollectionMethods := typeCollection collect: [:typeRecord | {typeRecord first . typeRecord second . typeRecord third } ].
+	intersection := exploredMethods intersection: typeCollection.
+	intersection ifNotEmpty: [ 1 halt ].
+	exploredTypes addAll: typeCollection.
+	exploredMethods addAll: typeCollectionMethods. 
+]
+
+{ #category : 'aggregating' }
 TypeMe >> format: aCollection [
 
 	^ aCollection collect: [ :pair |
@@ -130,29 +164,47 @@ TypeMe >> format: aCollection [
 			  pair key } ]
 ]
 
-{ #category : 'data aggregation' }
+{ #category : 'aggregating' }
 TypeMe >> format: aCollection withType: aType [
 
 	^ aCollection collect: [ :method |
 		  {
 			  method package name.
-			  method classBinding name.
+			  self getClassName: method.
 			  method selector.
 			  aType } ]
 ]
 
-{ #category : 'data aggregation' }
+{ #category : 'aggregating' }
 TypeMe >> formatWithSelf: aMethodCollection [
 
 	^ aMethodCollection collect: [ :method |
 		  | classBinding |
-		  
-		classBinding := method classBinding name.
+		  classBinding := self getClassName: method.
 		  {
 			  method package name.
 			  classBinding.
 			  method selector.
 			  classBinding } ]
+]
+
+{ #category : 'aggregating' }
+TypeMe >> getClassName: method [
+
+^ method isClassSide
+			                  ifTrue: [ method classBinding value name ]
+			                  ifFalse: [ method classBinding name ]
+]
+
+{ #category : 'instance creation' }
+TypeMe >> initialize: methodsCollection [
+
+	inputMethods := methodsCollection.
+	methodsWithSingleReturn := inputMethods select: [ :method |
+		                           ASTHelper ifMethodHasOneReturnStatement:
+			                           method ast ].
+	exploredTypes := OrderedCollection new.
+	exploredMethods := OrderedCollection new.
 ]
 
 { #category : 'accessing' }
@@ -161,20 +213,20 @@ TypeMe >> inputMethods: methodsCollection [
 	inputMethods := methodsCollection 
 ]
 
-{ #category : 'method heuristics' }
+{ #category : 'aggregating' }
 TypeMe >> methods: methodsSet selectorEqualsString: aString [
 
 	^ methodsSet select: [ :method | method selector = aString ]
 ]
 
-{ #category : 'method heuristics' }
+{ #category : 'aggregating' }
 TypeMe >> methods: methodsSet selectorMatchesRegex: aRegex [
 
 	^ methodsSet select: [ :method |
 		  aRegex asRegex matches: method selector ]
 ]
 
-{ #category : 'method heuristics' }
+{ #category : 'heuristics' }
 TypeMe >> methodsReturnBoolean [
 	"collect methods that we expect to return boolean based on their name"
 
@@ -193,26 +245,27 @@ TypeMe >> methodsReturnBoolean [
 		  withType: #Boolean
 ]
 
-{ #category : 'method heuristics' }
+{ #category : 'heuristics' }
 TypeMe >> methodsReturnClass [
 	"collects method that have only one return statement which returns a class (^ %ClassName%)"
+| result |
 
-	| result |
 	result := OrderedCollection new.
 	methodsWithSingleReturn do: [ :method |
 		| aReturn |
 		aReturn := ASTHelper getSingleReturn: method.
 		(ASTHelper ifReturnReturnsClass: aReturn) ifTrue: [
-			result add: (ASTHelper getClassFromReturnNew: aReturn) -> method ] ].
+			result add: ((ASTHelper getClassFromReturnNew: aReturn) , ' class') -> method ] ].
 
 	^ self format: result
 ]
 
-{ #category : 'method heuristics' }
+{ #category : 'heuristics' }
 TypeMe >> methodsReturnClassNew [
 	"collects method that have only one return statement which returns a class new (^ %ClassName% new)"
 
 	| result |
+
 	result := OrderedCollection new.
 	methodsWithSingleReturn do: [ :method |
 		| aReturn |
@@ -224,7 +277,7 @@ TypeMe >> methodsReturnClassNew [
 	^ self format: result
 ]
 
-{ #category : 'method heuristics' }
+{ #category : 'heuristics' }
 TypeMe >> methodsReturnLiteralNode [
 	"collects method that have only one return statement which returns a literal value (^ 5, ^ true, ^ 'BFS' etc)"
 
@@ -241,7 +294,7 @@ TypeMe >> methodsReturnLiteralNode [
 	^ self format: literalToMethod
 ]
 
-{ #category : 'method heuristics' }
+{ #category : 'heuristics' }
 TypeMe >> methodsReturnNil [
 	"collects method that have only one return statement which returns nil (^ nil)"
 
@@ -251,7 +304,7 @@ TypeMe >> methodsReturnNil [
 		  withType: nil
 ]
 
-{ #category : 'method heuristics' }
+{ #category : 'heuristics' }
 TypeMe >> methodsReturnNumber [
 	"collect methods that we expect to return Number type subcalsses"
 
@@ -263,7 +316,7 @@ TypeMe >> methodsReturnNumber [
 		  withType: #Number
 ]
 
-{ #category : 'method heuristics' }
+{ #category : 'heuristics' }
 TypeMe >> methodsReturnSelf [
 	"collects methods that have only one return statement which returns a self (^ self)"
 
@@ -275,7 +328,7 @@ TypeMe >> methodsReturnSelf [
 			    pair key value name = 'self' ]) collect: [ :pair | pair value ])
 ]
 
-{ #category : 'method heuristics' }
+{ #category : 'heuristics' }
 TypeMe >> methodsReturnSelfNew [
 	"collects methods that have only one return statement which returns a self new (^ self new)"
 
@@ -284,7 +337,7 @@ TypeMe >> methodsReturnSelfNew [
 				   (ASTHelper getSingleReturn: method) ])
 ]
 
-{ #category : 'method heuristics' }
+{ #category : 'heuristics' }
 TypeMe >> methodsReturnSmallInteger [
 	"collect methods that we expect to return SmallInteger"
 
@@ -296,7 +349,7 @@ TypeMe >> methodsReturnSmallInteger [
 		  withType: #Number
 ]
 
-{ #category : 'method heuristics' }
+{ #category : 'heuristics' }
 TypeMe >> methodsReturnString [
 	"collect methods that we expect to return String"
 
@@ -306,69 +359,30 @@ TypeMe >> methodsReturnString [
 		  withType: #String
 ]
 
-{ #category : 'method heuristics' }
-TypeMe >> methodsTypeExtractedFromName [
-	"here we make some guesses on which type might a method return based on its selector name, 
-if we can, we check that this information is correct"
-
-	^ OrderedCollection new
-		  addAll: self methodsReturnBoolean;
-		  addAll: self methodsReturnString;
-		  addAll: self methodsReturnNumber;
-		  addAll: self methodsReturnSmallInteger;
-		  yourself
-]
-
-{ #category : 'method heuristics' }
-TypeMe >> methodsWithReturn [
-
-	^ OrderedCollection new
-		  addAll: self methodsTypeExtractedFromName;
-		  addAll: self methodsReturnNil;
-		  addAll: self methodsReturnClass;
-		  addAll: self methodsReturnClassNew;
-		  addAll: self methodsReturnSelf;
-		  addAll: self methodsReturnSelfNew;
-		  addAll: self methodsReturnLiteralNode;
-		  yourself
-]
-
-{ #category : 'method heuristics' }
-TypeMe >> methodsWithoutReturn [
+{ #category : 'heuristics' }
+TypeMe >> methodsWithNoReturnStatement [
 	"their type correspond to the class of receiver"
 
-	^ self formatWithSelf: (methods reject: [ :method |
+	^ self formatWithSelf: (inputMethods reject: [ :method |
 			   ASTHelper ifMethodHasReturnStatements: method ast ])
 ]
 
-{ #category : 'method heuristics' }
+{ #category : 'run' }
 TypeMe >> runHeuristics [
 
-	| typesFile result |
-	result := OrderedCollection new
-		          addAll: self methodsWithReturn;
-		          addAll: self methodsWithoutReturn;
-		          yourself.
+	| typeResult |
+	typeResult := OrderedCollection new.
+	(self class selectorsInProtocol: 'heuristics') do: [ :method |
+		| methodResult |
+		methodResult := self perform: method.
+		typeResult addAll: methodResult.
+		self checkForAnomaly: methodResult ].
 
-	typesFile := FileLocator
-		             fromPath:
-		             'pharo-local/iceberg/type-me/types.csv' asPath
-		             ifNone: [  ].
+	Transcript
+		show: 'Total methods: ' , inputMethods size asString
+			, ', type discoverd for: ' , typeResult size asString , ' ('
+			, ((typeResult size / inputMethods size asFloat * 100) printShowingDecimalPlaces: 2)
+		 , '%).'.
 
-	types := NeoCSVReader on: typesFile readStream upToEnd.
-
-	typesFile asFileReference writeStreamDo: [ :file |
-		ZnBufferedWriteStream
-			on: file
-			do: [ :out |
-				| writer |
-				writer := NeoCSVWriter on: out.
-				writer writeHeader: { #Package. #Class. #Selector. #Types }.
-				result do: [ :each | writer nextPut: each ] ] ]
-]
-
-{ #category : 'accessing' }
-TypeMe >> types [
-
-	^ types
+	^ typeResult
 ]
