@@ -7,9 +7,10 @@ Class {
 
 { #category : 'as yet unclassified' }
 TypeMeTestHelper class >> checkTestConfiguration: testConfiguration [
-"check if packages with the same name already exist in the image"
-	
-	^ testConfiguration noneSatisfy: [:package | Package organizer includesPackageNamed: (package at: 'packageName') isTrue] .
+	"check if packages with the same name already exist in the image"
+
+	^ testConfiguration noneSatisfy: [ :package |
+		  Package organizer hasPackage: (package at: 'packageName') ]
 ]
 
 { #category : 'as yet unclassified' }
@@ -30,24 +31,34 @@ TypeMeTestHelper class >> installTestObjects: testConfiguration [
 					            sharedVariablesFromString: '';
 					            package: sysPackage;
 					            environment: Object environment ].
-			(confClass at: 'methods') do: [ :confMethod |
-				sysClass compile: ( self prepareMethodName: confMethod) ] ] ]
+			(confClass at: 'methods') do: [ :confMethod | 
+				sysClass compile: (self prepareMethodName: confMethod) ] ] ]
 ]
 
 { #category : 'accessing' }
-TypeMeTestHelper class >> prepareMethodName: methodName [
+TypeMeTestHelper class >> prepareMethodName: methodPair [
 	"checks if a method is a keyword method and ads to it fake arguments to facilitate installing it to the system (e.g a:b -> a:arg1 b:arg2) otherwise return method name"
 
-	(methodName includesSubstring: ':') ifTrue: [
-		^ ' ' join:
+	|methodName newMethodName|
+	
+	methodName := methodPair keys first.
+	
+	newMethodName := (methodName includesSubstring: ':') ifTrue: [
+		 ' ' join:
 			  ((methodName splitOn: ':') withIndexCollect: [ :selector :index |
-				   selector , ':arg' , index asString ]) ].
+				   selector , ':arg' , index asString ]) ]
+		ifFalse: [methodName].
 
-	^ methodName
+	^ newMethodName , ' ' , methodPair values first
 ]
 
 { #category : 'as yet unclassified' }
 TypeMeTestHelper class >> removeTestObjects: testConfiguration [
 
-	testConfiguration do: [ :confPackage | confPackage removeFromSystem ].
+	testConfiguration do: [ :packageRecord |
+		| package packageName|
+		
+		packageName := packageRecord values first.
+		package := Package organizer packageNamed: packageName ifAbsent: nil.	           package ifNotNil: [  
+		package removeFromSystem ] ]
 ]

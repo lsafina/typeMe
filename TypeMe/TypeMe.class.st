@@ -11,17 +11,46 @@ Class {
 		'inputMethods',
 		'methodsWithSingleReturn',
 		'exploredTypes',
-		'exploredMethods'
+		'exploredMethods',
+		'typeResult'
 	],
 	#category : 'TypeMe-Objects',
 	#package : 'TypeMe',
 	#tag : 'Objects'
 }
 
-{ #category : 'extracting' }
-TypeMe class >> extractTypesForClass: className [
+{ #category : 'analyzing' }
+TypeMe >> checkForAnomaly: typeCollection [
 
-	| typerInstance classObj collectedMethods |
+	| intersection typeCollectionMethods |
+	typeCollectionMethods := typeCollection collect: [ :typeRecord |
+		                         {
+			                         typeRecord first.
+			                         typeRecord second.
+			                         typeRecord third } ].
+	intersection := exploredMethods intersection: typeCollection.
+	intersection ifNotEmpty: [
+		Warning signal: 'This method has been alredy analyzed'. "TODO: here we check for discprepancies between results" ].
+	exploredTypes addAll: typeCollection.
+	exploredMethods addAll: typeCollectionMethods
+]
+
+{ #category : 'accessing' }
+TypeMe >> exploredMethods [
+
+	^ exploredMethods
+]
+
+{ #category : 'accessing' }
+TypeMe >> exploredTypes [
+
+	^ exploredTypes
+]
+
+{ #category : 'extracting' }
+TypeMe >> extractTypesForClass: className [
+
+	| classObj collectedMethods |
 	collectedMethods := OrderedCollection new.
 
 	classObj := Smalltalk globals classNamed: className.
@@ -32,14 +61,14 @@ TypeMe class >> extractTypesForClass: className [
 	collectedMethods addAll: classObj methods.
 	collectedMethods addAll: classObj class methods.
 
-	typerInstance := self new initialize: collectedMethods.
-	^ typerInstance runHeuristics
+	self initialize: collectedMethods.
+	^ self runHeuristics
 ]
 
 { #category : 'extracting' }
-TypeMe class >> extractTypesForClasses: classNameCollection [
+TypeMe >> extractTypesForClasses: classNameCollection [
 
-	| typerInstance collectedMethods |
+	| collectedMethods |
 	collectedMethods := OrderedCollection new.
 
 	classNameCollection do: [ :className |
@@ -52,103 +81,63 @@ TypeMe class >> extractTypesForClasses: classNameCollection [
 		collectedMethods addAll: classObj methods.
 		collectedMethods addAll: classObj class methods ].
 
-	typerInstance := self new initialize: collectedMethods.
-	^ typerInstance runHeuristics
+	self initialize: collectedMethods.
+	^ self runHeuristics
 ]
 
 { #category : 'extracting' }
-TypeMe class >> extractTypesForImage [
+TypeMe >> extractTypesForImage [
 
-	| typerInstance collectedMethods |
+	| collectedMethods |
 	collectedMethods := Smalltalk globals methods.
 
-
-	typerInstance := self new initialize: collectedMethods.
-	^ typerInstance runHeuristics
+	self initialize: collectedMethods.
+	^ self runHeuristics
 ]
 
 { #category : 'extracting' }
-TypeMe class >> extractTypesForMethod: methodName [
+TypeMe >> extractTypesForMethod: methodName [
 
-	| typerInstance collectedMethods |
+	| collectedMethods |
 	collectedMethods := Smalltalk globals methods select: [ :m |
 		                    m selector = methodName ].
-
-	typerInstance := self new initialize: collectedMethods.
-	^ typerInstance runHeuristics
+	
+	self initialize: collectedMethods.
+	^ self runHeuristics
 ]
 
 { #category : 'extracting' }
-TypeMe class >> extractTypesForMethods: methodNameCollection [
+TypeMe >> extractTypesForMethods: methodNameCollection [
 
-	| typerInstance collectedMethods |
+	| collectedMethods |
 	collectedMethods := Smalltalk globals methods select: [ :m |
 		                    methodNameCollection contains: m selector ].
 
-	typerInstance := self new initialize: collectedMethods.
-	^ typerInstance runHeuristics
+	self initialize: collectedMethods.
+	^ self runHeuristics
 ]
 
 { #category : 'extracting' }
-TypeMe class >> extractTypesForPackage: packageName [
+TypeMe >> extractTypesForPackage: packageName [
 
-	| typerInstance collectedMethods |
+	| collectedMethods |
 	collectedMethods := (Package organizer packageNamed: packageName)
 		                    methods.
 
-	typerInstance := self new initialize: collectedMethods.
-	^ typerInstance runHeuristics
+	self initialize: collectedMethods.
+	^ self runHeuristics
 ]
 
 { #category : 'extracting' }
-TypeMe class >> extractTypesForPackages: packageNameCollection [
+TypeMe >> extractTypesForPackages: packageNameCollection [
 
-	| typerInstance collectedMethods |
+	| collectedMethods |
 	collectedMethods := packageNameCollection flatCollect: [ :packageName |
 		                    (Package organizer packageNamed: packageName)
 			                    methods ].
-
-	typerInstance := self new initialize: collectedMethods.
-	^ typerInstance runHeuristics
-]
-
-{ #category : 'printing' }
-TypeMe class >> print: typeCollection to: aFormat [
-
-	aFormat = 'csv' ifTrue: [ self printToCSV: typeCollection ]
-	
-	
-]
-
-{ #category : 'printing' }
-TypeMe class >> printToCSV: typeCollection [
-
-	| typesFile |
-	typesFile := FileLocator
-		             fromPath:
-		             'pharo-local/iceberg/typeMe/types.csv' asPath
-		             ifNone: [].
-
-	typesFile asFileReference writeStreamDo: [ :file |
-		ZnBufferedWriteStream
-			on: file
-			do: [ :out |
-				| writer |
-				writer := NeoCSVWriter on: out.
-				writer writeHeader: { #Package. #Class. #Selector. #Types }.
-				typeCollection do: [ :each | writer nextPut: each ] ] ]
-]
-
-{ #category : 'analyzing' }
-TypeMe >> checkForAnomaly: typeCollection [
-
-	| intersection typeCollectionMethods|
-	
-	typeCollectionMethods := typeCollection collect: [:typeRecord | {typeRecord first . typeRecord second . typeRecord third } ].
-	intersection := exploredMethods intersection: typeCollection.
-	intersection ifNotEmpty: [ 1 halt ].
-	exploredTypes addAll: typeCollection.
-	exploredMethods addAll: typeCollectionMethods. 
+		
+	self initialize: collectedMethods.
+	^ self runHeuristics
 ]
 
 { #category : 'aggregating' }
@@ -205,6 +194,13 @@ TypeMe >> initialize: methodsCollection [
 			                           method ast ].
 	exploredTypes := OrderedCollection new.
 	exploredMethods := OrderedCollection new.
+	typeResult := OrderedCollection new
+]
+
+{ #category : 'accessing' }
+TypeMe >> inputMethods [
+
+	^ inputMethods
 ]
 
 { #category : 'accessing' }
@@ -367,22 +363,61 @@ TypeMe >> methodsWithNoReturnStatement [
 			   ASTHelper ifMethodHasReturnStatements: method ast ])
 ]
 
+{ #category : 'accessing' }
+TypeMe >> methodsWithSingleReturn [
+
+	^ methodsWithSingleReturn
+]
+
+{ #category : 'printing' }
+TypeMe >> print: typeCollection to: aFormat [
+
+	aFormat = 'csv' ifTrue: [ self printToCSV: typeCollection ]
+	
+	
+]
+
+{ #category : 'printing' }
+TypeMe >> printToCSV: typeCollection [
+
+	| typesFile |
+	typesFile := FileLocator
+		             fromPath:
+		             'pharo-local/iceberg/typeMe/types.csv' asPath
+		             ifNone: [].
+
+	typesFile asFileReference writeStreamDo: [ :file |
+		ZnBufferedWriteStream
+			on: file
+			do: [ :out |
+				| writer |
+				writer := NeoCSVWriter on: out.
+				writer writeHeader: { #Package. #Class. #Selector. #Types }.
+				typeCollection do: [ :each | writer nextPut: each ] ] ]
+]
+
 { #category : 'run' }
 TypeMe >> runHeuristics [
-
-	| typeResult |
-	typeResult := OrderedCollection new.
+	
 	(self class selectorsInProtocol: 'heuristics') do: [ :method |
 		| methodResult |
 		methodResult := self perform: method.
 		typeResult addAll: methodResult.
 		self checkForAnomaly: methodResult ].
-
-	Transcript
-		show: 'Total methods: ' , inputMethods size asString
-			, ', type discoverd for: ' , typeResult size asString , ' ('
-			, ((typeResult size / inputMethods size asFloat * 100) printShowingDecimalPlaces: 2)
-		 , '%).'.
-
+	
 	^ typeResult
+]
+
+{ #category : 'accessing' }
+TypeMe >> statistics [
+
+	^ inputMethods
+		ifNotNil: [
+			Dictionary newFrom: {
+					('Total amount of methods' -> inputMethods size).
+					('Amount of methods typed' -> typeResult size).
+					('% of typed'
+					 -> (typeResult size / inputMethods size asFloat * 100
+							  printShowingDecimalPlaces: 2)) } ]
+		ifNil: [ ^ Warning signal: 'Run type extraction to get statistics' ]
 ]
