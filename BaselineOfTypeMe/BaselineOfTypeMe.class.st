@@ -16,7 +16,7 @@ BaselineOfTypeMe >> baseline: spec [
 		
 		spec
 			baseline: 'TypeInfoTools' 
-			with: [ spec repository: 'github://JanBliznicenko/TypeInfoTools/src' ].
+			with: [ spec repository: 'github://JanBliznicenko/TypeInfoTools:main/src' ].
 		
 		
 		spec 
