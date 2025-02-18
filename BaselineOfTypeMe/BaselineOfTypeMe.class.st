@@ -18,6 +18,6 @@ BaselineOfTypeMe >> baseline: spec [
 			package: #'TypeMe-Tests' with: [
 				spec requires: #('TypeMe'). ].
 		spec 
-			group: 'Core' with: #('TypeMe' 'Type-Tests');
-			group: 'default' with: #('TypeMe' 'Type-Tests'). ].
+			group: 'Core' with: #('TypeMe' 'TypeMe-Tests');
+			group: 'default' with: #('TypeMe' 'TypeMe-Tests'). ].
 ]
