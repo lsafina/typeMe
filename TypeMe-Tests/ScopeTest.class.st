@@ -23,12 +23,6 @@ ScopeTest >> setUp [
 				"classes": [
 					{ "className": "TestClassC", "methods": [ {"hasName": "a name isNotNil:[^true]. ^false"}, {"testmeUpdateMethod": "a update: b"}, {"testCreation": "self setUp" } ]}
 				] 
-			},
-			{ 
-				"packageName": "TypeMe-TestPackage-ReturnBoolean",
-				"classes": [
-					{ "className": "TypeMeReturnBoolean", "methods": [ {"hasName": "^nil"}, {"isUsed": "^nil"}, {"includes": "^nil" }, { "=": "other ^nil" }]}
-				]
 			}
 		]
 	'.

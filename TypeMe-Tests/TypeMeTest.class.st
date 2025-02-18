@@ -3,7 +3,8 @@ Class {
 	#superclass : 'TestCase',
 	#instVars : [
 		'testConfiguration',
-		'typer'
+		'typer',
+		'testConfigurationCollection'
 	],
 	#category : 'TypeMe-Tests',
 	#package : 'TypeMe-Tests'
@@ -16,9 +17,17 @@ TypeMeTest >> setUp [
 ]
 
 { #category : 'tests' }
+TypeMeTest >> tearDown [ 
+
+	TypeMeTestHelper cleanTestConfigurations
+]
+
+{ #category : 'tests' }
 TypeMeTest >> testMethodsReturnBoolean [
 
-	testConfiguration := NeoJSONReader fromString: '
+	| result |
+	
+	testConfiguration := '
 		[
 			{ 
 				"packageName": "TypeMe-TestPackage-ReturnBoolean",
@@ -28,85 +37,310 @@ TypeMeTest >> testMethodsReturnBoolean [
 			}
 		]
 	'.
-
-	"check if test configuration can be installed in the image"
-	(TypeMeTestHelper checkTestConfiguration: testConfiguration)
-		ifFalse: [
-			Error signal:
-				'Test packages can not be created. Skipping all tests in this class.' ]
-		ifTrue: [ TypeMeTestHelper installTestObjects: testConfiguration ].
+	
+	TypeMeTestHelper installTestConfiguration: testConfiguration.
 	
 	typer extractTypesForPackage: 'TypeMe-TestPackage-ReturnBoolean'.
-	typer methodsReturnBoolean.
-	self assert: false
+	result := typer methodsReturnBoolean.
+	
+	self assert: result size equals: 4.
+	self assert: ((result collect: [ :a | a third ]) allSatisfy: [:methodName |  { 'hasName' . 'isUsed' . 'includes' . '='} includes: methodName ]).
+	self assert: (result collect: [ :a | a fourth ]) asSet size equals: 1. 
+	self assert: (result collect: [ :a | a fourth ]) asSet atRandom equals: 'Boolean'.
+	
+	TypeMeTestHelper removeTestConfiguration: testConfiguration.
+	
 ]
 
 { #category : 'tests' }
 TypeMeTest >> testMethodsReturnClass [
 
-	self flag: #toImplement.
-	self assert: false
+	| result |
+	
+	testConfiguration := '
+		[
+			{ 
+				"packageName": "TypeMe-TestPackage-ReturnClass",
+				"classes": [
+					{ "className": "TypeMeReturnClass", "methods": [ {"returnClass": "^ TypeMeReturnClass"}, {"returnNil": "^nil"}]}
+				]
+			}
+		]
+	'.
+	
+	TypeMeTestHelper installTestConfiguration: testConfiguration.
+	
+	typer extractTypesForPackage: 'TypeMe-TestPackage-ReturnClass'.
+	result := typer methodsReturnClass.
+	
+	self assert: result size equals: 1.
+	self assert: (result collect: [ :a | a third ]) first equals: 'returnClass'.
+	self assert: (result collect: [ :a | a fourth ]) first equals: 'TypeMeReturnClass class'.
+	
+	TypeMeTestHelper removeTestConfiguration: testConfiguration.
 ]
 
 { #category : 'tests' }
 TypeMeTest >> testMethodsReturnClassNew [
 
-	self flag: #toImplement.
-	self assert: false
+	| result |
+	
+	testConfiguration := '
+		[
+			{ 
+				"packageName": "TypeMe-TestPackage-ReturnClassNew",
+				"classes": [
+					{ "className": "TypeMeReturnClassNew", "methods": [ {"returnClassNew": "^ TypeMeReturnClass new"}, {"returnClass": "^ TypeMeReturnClass"}, {"returnNil": "^nil"}]}
+				]
+			}
+		]
+	'.
+	
+	TypeMeTestHelper installTestConfiguration: testConfiguration.
+	
+	typer extractTypesForPackage: 'TypeMe-TestPackage-ReturnClassNew'.
+	result := typer methodsReturnClassNew.
+	
+	self assert: result size equals: 1.
+	self assert: (result collect: [ :a | a third ]) first equals: 'returnClassNew'.
+	self assert: (result collect: [ :a | a fourth ]) first equals: 'TypeMeReturnClass'.
+	
+	TypeMeTestHelper removeTestConfiguration: testConfiguration.
 ]
 
 { #category : 'tests' }
 TypeMeTest >> testMethodsReturnLiteralNode [
 
-	self flag: #toImplement.
-	self assert: false
+	| result |
+	testConfiguration := '
+		[
+			{ 
+				"packageName": "TypeMe-TestPackage-ReturnLiteral",
+				"classes": [
+					{ "className": "TypeMeReturnLiteral", "methods": [ {"returnNumber": "^5"}, {"returnString": "^ ''BFS''"}, {"returnBoolean": "^ true" }, {"returnNotLiteral": "^ nil" }]}
+				]
+			}
+		]
+	'.
+
+	TypeMeTestHelper installTestConfiguration: testConfiguration.
+
+	typer extractTypesForPackage: 'TypeMe-TestPackage-ReturnLiteral'.
+	result := typer methodsReturnLiteralNode.
+
+	self assert: result size equals: 3.
+	self
+		assert: ((result collect: [ :a | a third ]) allSatisfy: [:methodName |  { 'returnNumber'. 'returnString'. 'returnBoolean' } includes: methodName ]).
+		
+	self assert: (result collect: [ :a | a fourth ]) asSet size equals: 1.
+	self
+		assert: (result collect: [ :a | a fourth ]) asSet atRandom
+		equals: 'Literal'.
+
+	TypeMeTestHelper removeTestConfiguration: testConfiguration
 ]
 
 { #category : 'tests' }
 TypeMeTest >> testMethodsReturnNil [
 
-	self flag: #toImplement.
-	self assert: false
+	| result |
+	
+	testConfiguration := '
+		[
+			{ 
+				"packageName": "TypeMe-TestPackage-ReturnOneNil",
+				"classes": [
+					{ "className": "TypeMeReturnOneNil", "methods": [ {"returnOneNil": " self yourself. ^ nil"}, {"returnTwothings": "self ifNil: [^ nil] ifNotNil: [^nil]"}, {"noExplicitReturn": "self yourself"}]}
+				]
+			}
+		]
+	'.
+	
+	TypeMeTestHelper installTestConfiguration: testConfiguration.
+	
+	typer extractTypesForPackage: 'TypeMe-TestPackage-ReturnOneNil'.
+	result := typer methodsReturnNil.
+	
+	self assert: result size equals: 1.
+	self assert: (result collect: [ :a | a third ]) first equals: 'returnOneNil'.
+	self assert: (result collect: [ :a | a fourth ]) first equals: 'nil'.
+	
+	TypeMeTestHelper removeTestConfiguration: testConfiguration.
 ]
 
 { #category : 'tests' }
 TypeMeTest >> testMethodsReturnNumber [
 
-	self flag: #toImplement.
-	self assert: false
+	| result |
+	testConfiguration := '
+		[
+			{ 
+				"packageName": "TypeMe-TestPackage-ReturnNumber",
+				"classes": [
+					{ "className": "TypeMeReturnNumber", "methods": [ {"size": "^5"}, {"priority": "^100"}, {"returnNotNumber": "^nil" }]}
+				]
+			}
+		]
+	'.
+
+	TypeMeTestHelper installTestConfiguration: testConfiguration.
+
+	typer extractTypesForPackage: 'TypeMe-TestPackage-ReturnNumber'.
+	result := typer methodsReturnNumber.
+
+	self assert: result size equals: 2.
+	self
+		assert: ((result collect: [ :a | a third ]) allSatisfy: [:methodName |  { 'size'. 'priority' } includes: methodName ]).
+		
+	self assert: (result collect: [ :a | a fourth ]) asSet size equals: 1.
+	self
+		assert: (result collect: [ :a | a fourth ]) asSet atRandom
+		equals: 'Number'.
+
+	TypeMeTestHelper removeTestConfiguration: testConfiguration
 ]
 
 { #category : 'tests' }
 TypeMeTest >> testMethodsReturnSelf [
 
-	self flag: #toImplement.
-	self assert: false
+	| result |
+	
+	testConfiguration := '
+		[
+			{ 
+				"packageName": "TypeMe-TestPackage-ReturnSelf",
+				"classes": [
+					{ "className": "TypeMeReturnSelf", "methods": [ {"returnOneSelf": "self yourself. ^ self"}, {"returnTwoSelf": "true ifTrue: [^ self] ifFalse: [^self]"}, {"returnNotSelf": "self yourself. ^ nil"}]}
+				]
+			}
+		]
+	'.
+	
+	TypeMeTestHelper installTestConfiguration: testConfiguration.
+	
+	typer extractTypesForPackage: 'TypeMe-TestPackage-ReturnSelf'.
+	result := typer methodsReturnSelf.
+	
+	self assert: result size equals: 1.
+	self assert: (result collect: [ :a | a third ]) first equals: 'returnOneSelf'.
+	self assert: (result collect: [ :a | a fourth ]) first equals: 'TypeMeReturnSelf'.
+	
+	TypeMeTestHelper removeTestConfiguration: testConfiguration.
 ]
 
 { #category : 'tests' }
 TypeMeTest >> testMethodsReturnSelfNew [
 
-	self flag: #toImplement.
-	self assert: false
+	| result |
+	
+	testConfiguration := '
+		[
+			{ 
+				"packageName": "TypeMe-TestPackage-ReturnSelf",
+				"classes": [
+					{ "className": "TypeMeReturnSelf", "methods": [ {"returnOneSelf": "self yourself. ^ self new"}, {"returnTwoSelf": "true ifTrue: [^ self] ifFalse: [^self]"}, {"returnNotSelf": "self yourself. ^ nil"}]}
+				]
+			}
+		]
+	'.
+	
+	TypeMeTestHelper installTestConfiguration: testConfiguration.
+	
+	typer extractTypesForPackage: 'TypeMe-TestPackage-ReturnSelf'.
+	result := typer methodsReturnSelf.
+	
+	self assert: result size equals: 1.
+	self assert: (result collect: [ :a | a third ]) first equals: 'returnOneSelf'.
+	self assert: (result collect: [ :a | a fourth ]) first equals: 'TypeMeReturnSelf'.
+	
+	TypeMeTestHelper removeTestConfiguration: testConfiguration.
 ]
 
 { #category : 'tests' }
 TypeMeTest >> testMethodsReturnSmallInteger [
 
-	self flag: #toImplement.
-	self assert: false
+	| result |
+	testConfiguration := '
+		[
+			{ 
+				"packageName": "TypeMe-TestPackage-ReturnSmallInteger",
+				"classes": [
+					{ "className": "TypeMeReturnSmallInteger", "methods": [ {"hash": "^nil"}]}
+				]
+			}
+		]
+	'.
+
+	TypeMeTestHelper installTestConfiguration: testConfiguration.
+
+	typer extractTypesForPackage: 'TypeMe-TestPackage-ReturnSmallInteger'.
+	result := typer methodsReturnSmallInteger.
+
+	self assert: result size equals: 1.
+	self assert: (result collect: [ :a | a third ]) first equals: 'hash'.
+	self assert: (result collect: [ :a | a fourth ]) equals: 'SmallInteger'.
+
+	TypeMeTestHelper removeTestConfiguration: testConfiguration
 ]
 
 { #category : 'tests' }
 TypeMeTest >> testMethodsReturnString [
 
-	self flag: #toImplement.
-	self assert: false
+	| result |
+	testConfiguration := '
+		[
+			{ 
+				"packageName": "TypeMe-TestPackage-ReturnString",
+				"classes": [
+					{ "className": "TypeMeReturnString", "methods": [ {"asString": "^nil"}, {"withString": "^nil"}, {"includeString": "^nil" }]}
+				]
+			}
+		]
+	'.
+
+	TypeMeTestHelper installTestConfiguration: testConfiguration.
+
+	typer extractTypesForPackage: 'TypeMe-TestPackage-ReturnString'.
+	result := typer methodsReturnString.
+
+	self assert: result size equals: 3.
+	self
+		assert: ((result collect: [ :a | a third ]) allSatisfy: [:methodName |  { 'asString'. 'withString'. 'includeString'. '=' } includes: methodName ]).
+		
+	self assert: (result collect: [ :a | a fourth ]) asSet size equals: 1.
+	self
+		assert: (result collect: [ :a | a fourth ]) asSet atRandom
+		equals: 'String'.
+
+	TypeMeTestHelper removeTestConfiguration: testConfiguration
 ]
 
 { #category : 'tests' }
 TypeMeTest >> testMethodsWithNoReturnStatement [
 
-	self flag: #toImplement.
-	self assert: false
+	| result |
+	
+	testConfiguration := '
+		[
+			{ 
+				"packageName": "TypeMe-TestPackage-NoReturnStatement",
+				"classes": [
+					{ "className": "TestClassNoReturnStatementA", "methods": [ {"initialize": "self new"}]},
+					{ "className": "TestClassNoReturnStatementB", "methods": [ {"initialize": "self yourself"}]} 
+				] 
+			}
+		]
+	'.
+	
+	TypeMeTestHelper installTestConfiguration: testConfiguration.
+	
+	typer extractTypesForPackage: 'TypeMe-TestPackage-NoReturnStatement'.
+	result := typer methodsWithNoReturnStatement.
+	
+	self assert: result size equals: 2.
+	self assert: ((result collect: [ :a | a third ]) allSatisfy: [:methodName | methodName = 'initialize']).
+	self assert: (result collect: [ :a | a fourth ]) first equals: 'TestClassNoReturnStatementA'.
+	self assert: (result collect: [ :a | a fourth ]) second equals: 'TestClassNoReturnStatementB'.
+	
+	TypeMeTestHelper removeTestConfiguration: testConfiguration.
 ]

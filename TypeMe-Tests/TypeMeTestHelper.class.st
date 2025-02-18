@@ -14,6 +14,20 @@ TypeMeTestHelper class >> checkTestConfiguration: testConfiguration [
 ]
 
 { #category : 'as yet unclassified' }
+TypeMeTestHelper class >> cleanTestConfigurations [
+
+	|packageNames|
+	
+	packageNames := nil. "TODO retrieve all created packages"	
+
+	packageNames do: [:packageName | 
+		|package |	
+		package := Package organizer packageNamed: packageName ifAbsent: nil.
+		package ifNotNil: [ package removeFromSystem ].
+	]
+]
+
+{ #category : 'as yet unclassified' }
 TypeMeTestHelper class >> installTestConfiguration: testConfiguration [
 
 	| ts |
@@ -23,10 +37,13 @@ TypeMeTestHelper class >> installTestConfiguration: testConfiguration [
 	"check if test configuration can be installed in the image"
 	(self checkTestConfiguration: ts)
 		ifFalse: [
-			Error signal:
-				'Test package(s) can not be created.' ] 
-		ifTrue: [ self installTestObjects: ts ]
-	
+			(self removeTestConfiguration: testConfiguration) ifFalse: [
+				Error signal:'Test package(s) can not be created.' 
+			]
+		]. 
+	 
+	self installTestObjects: ts. 
+	^ true
 ]
 
 { #category : 'as yet unclassified' }
@@ -71,9 +88,14 @@ TypeMeTestHelper class >> prepareMethodName: methodPair [
 { #category : 'as yet unclassified' }
 TypeMeTestHelper class >> removeTestConfiguration: testConfiguration [
 
+	|result|
+	
+	result := true.	
 	(NeoJSONReader fromString: testConfiguration) do: [ :packageRecord |
 		| package packageName |
 		packageName := packageRecord values first.
 		package := Package organizer packageNamed: packageName ifAbsent: nil.
-		package ifNotNil: [ package removeFromSystem ] ]
+		package ifNotNil: [ package removeFromSystem ] ifNil: [ result := false]].
+	
+	^ result 
 ]
