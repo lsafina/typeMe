@@ -13,8 +13,15 @@ BaselineOfTypeMe >> baseline: spec [
 	<baseline>
 
 	spec for: #'common' do: [
+		
+		spec
+			baseline: 'TypeInfoTools' 
+			with: [ spec repository: 'github://JanBliznicenko/TypeInfoTools/src' ].
+		
+		
 		spec 
-			package: #'TypeMe';
+			package: #'TypeMe'  with: [
+				spec requires: #('TypeInfoTools')] ;
 			package: #'TypeMe-Tests' with: [
 				spec requires: #('TypeMe'). ].
 		spec 
