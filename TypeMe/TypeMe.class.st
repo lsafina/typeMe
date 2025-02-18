@@ -1,7 +1,9 @@
 "
 This class stores a list of methods required to extract return types of Pharo Image methods based on various heuristics e.g method's name, method's structure etc.
 
-To run the extraction do TypeMe extractTypes, that we create a csv file in the root folder of TypeMe repository. The whole process takes around 5 min on M2 24GB 
+To run the extraction create a typer instance (TypeMe new) and run the corresponding extract method on it (extract[%package%|%method%|%class%|...]). 
+To create a csv file with result run printToCSV on the typer instance.
+To see the percentage of methods being typed run statistics method on the typer instance.
  
 "
 Class {
