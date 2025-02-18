@@ -13,6 +13,7 @@ Class {
 { #category : 'tests' }
 TypeMeTest >> setUp [
 
+	super setUp.
 	typer := TypeMe new
 ]
 
