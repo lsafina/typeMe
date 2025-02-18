@@ -14,14 +14,23 @@ ScopeTest >> setUp [
 			{ 
 				"packageName": "TypeMe-TestPackage-1",
 				"classes": [
-					{ "className": "TestClassA", "methods": [ {"isTrue": "^ a = b"}, {"initialize": "^ self new"}, {"asString": "^ a toString"} ]},
-					{ "className": "TestClassB", "methods": [ {"add:to": "^ a add: b"}, {"size": "^1"}, {"testmeUpdateMethod": "a update: b"}]} 
+					{ "className": "TestClassA", "methods": [ 
+									{"isTrue" : ""}, 
+									{"initialize" : "^ self new"}, 
+									{"asString" : ""} ]},
+					{ "className": "TestClassB", "methods": [ 
+									{"add:to" : ""}, 
+									{"mySize" : "^1"}, 
+									{"testmeUpdateMethod" : ""}]} 
 				] 
 			},
 			{ 
 				"packageName": "TypeMe-TestPackage-2",
 				"classes": [
-					{ "className": "TestClassC", "methods": [ {"hasName": "a name isNotNil:[^true]. ^false"}, {"testmeUpdateMethod": "a update: b"}, {"testCreation": "self setUp" } ]}
+					{ "className": "TestClassC", "methods": [ 
+							{"hasName" : ""}, 
+							{"testmeUpdateMethod": ""}, 
+							{"testCreation": "self setUp" } ]}
 				] 
 			}
 		]
@@ -55,14 +64,15 @@ ScopeTest >> testExtractTypesForClasses [
 { #category : 'tests' }
 ScopeTest >> testExtractTypesForMethod [
 
-	typer extractTypesForMethod: 'testmeUpdateMethod'.
+	typer extractTypesForMethod: 'testmeUpdateMethod' fromClasses: { 'TestClassB' . 'TestClassC' }.
+	
 	self assert: typer inputMethods size equals: 2
 ]
 
 { #category : 'tests' }
 ScopeTest >> testExtractTypesForMethods [
 
-	typer extractTypesForMethods: {'testmeUpdateMethod', 'size'}.
+	typer extractTypesForMethods: {#testmeUpdateMethod . #mySize}.
 	self assert: typer inputMethods size equals: 3
 ]
 

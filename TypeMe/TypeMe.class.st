@@ -101,10 +101,18 @@ TypeMe >> extractTypesForImage [
 TypeMe >> extractTypesForMethod: methodName [
 
 	| collectedMethods |
-	collectedMethods := Smalltalk globals methods select: [ :m |
+	collectedMethods := CompiledMethod allInstances  select: [ :m |
 		                    m selector = methodName ].
-	
 	self initialize: collectedMethods.
+	^ self runHeuristics
+]
+
+{ #category : 'as yet unclassified' }
+TypeMe >> extractTypesForMethod: aString fromClasses: aCollection [ 
+
+	| compiledMethods |
+	compiledMethods := aCollection collect: [ :e| (Smalltalk globals at: e asSymbol) >> aString asSymbol ].
+	self initialize: compiledMethods.
 	^ self runHeuristics
 ]
 
@@ -112,8 +120,9 @@ TypeMe >> extractTypesForMethod: methodName [
 TypeMe >> extractTypesForMethods: methodNameCollection [
 
 	| collectedMethods |
+	self halt.
 	collectedMethods := Smalltalk globals methods select: [ :m |
-		                    methodNameCollection contains: m selector ].
+		                    methodNameCollection includes:  m selector ].
 
 	self initialize: collectedMethods.
 	^ self runHeuristics
