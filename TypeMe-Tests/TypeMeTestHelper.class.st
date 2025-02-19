@@ -10,7 +10,7 @@ TypeMeTestHelper class >> checkTestConfiguration: testConfiguration [
 	"check if packages with the same name already exist in the image"
 
 	^ testConfiguration noneSatisfy: [ :package |
-		  Package organizer hasPackage: (package at: 'packageName') ]
+		  self packageOrganizer hasPackage: (package at: 'packageName') ]
 ]
 
 { #category : 'as yet unclassified' }
@@ -46,7 +46,7 @@ TypeMeTestHelper class >> installTestObjects: testConfiguration [
 	testConfiguration do: [ :confPackage |
 		| sysPackage |
 		sysPackage := Package named: (confPackage at: 'packageName').
-		Package organizer addPackage: sysPackage.
+		self packageOrganizer addPackage: sysPackage.
 
 		(confPackage at: 'classes') do: [ :confClass |
 			| sysClass |
@@ -88,7 +88,7 @@ TypeMeTestHelper class >> removeTestConfiguration: testConfiguration [
 	(STONReader on: testConfiguration readStream ) next do: [ :packageRecord |
 		| package packageName |
 		packageName := packageRecord values first.
-		package := Package organizer packageNamed: packageName ifAbsent: nil.
+		package := self packageOrganizer packageNamed: packageName ifAbsent: nil.
 		package ifNotNil: [ package removeFromSystem ] ifNil: [ result := false]].
 	
 	^ result 

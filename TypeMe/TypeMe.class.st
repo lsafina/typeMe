@@ -132,7 +132,7 @@ TypeMe >> extractTypesForMethods: methodNameCollection [
 TypeMe >> extractTypesForPackage: packageName [
 
 	| collectedMethods |
-	collectedMethods := (Package organizer packageNamed: packageName)
+	collectedMethods := (self packageOrganizer packageNamed: packageName)
 		                    methods.
 
 	self initialize: collectedMethods.
@@ -144,7 +144,7 @@ TypeMe >> extractTypesForPackages: packageNameCollection [
 
 	| collectedMethods |
 	collectedMethods := packageNameCollection flatCollect: [ :packageName |
-		                    (Package organizer packageNamed: packageName)
+		                    (self packageOrganizer packageNamed: packageName)
 			                    methods ].
 		
 	self initialize: collectedMethods.
