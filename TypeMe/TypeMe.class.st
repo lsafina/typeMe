@@ -10,6 +10,7 @@ Class {
 	#name : 'TypeMe',
 	#superclass : 'Object',
 	#instVars : [
+		'environment',
 		'inputMethods',
 		'methodsWithSingleReturn',
 		'exploredTypes',
@@ -55,7 +56,7 @@ TypeMe >> extractTypesForClass: className [
 	| classObj collectedMethods |
 	collectedMethods := OrderedCollection new.
 
-	classObj := Smalltalk globals classNamed: className.
+	classObj := environment classNamed: className.
 	classObj ifNil: [
 		self error:
 			'Class ' , className , ' is not found in the image. Aborting.' ].
@@ -75,7 +76,7 @@ TypeMe >> extractTypesForClasses: classNameCollection [
 
 	classNameCollection do: [ :className |
 		| classObj |
-		classObj := Smalltalk globals classNamed: className.
+		classObj := environment classNamed: className.
 		classObj ifNil: [
 			self error:
 				'Class ' , className , ' is not found in the image. Aborting.' ].
@@ -91,7 +92,7 @@ TypeMe >> extractTypesForClasses: classNameCollection [
 TypeMe >> extractTypesForImage [
 
 	| collectedMethods |
-	collectedMethods := Smalltalk globals methods.
+	collectedMethods := environment methods.
 
 	self initialize: collectedMethods.
 	^ self runHeuristics
@@ -101,17 +102,20 @@ TypeMe >> extractTypesForImage [
 TypeMe >> extractTypesForMethod: methodName [
 
 	| collectedMethods |
-	collectedMethods := CompiledMethod allInstances  select: [ :m |
+	collectedMethods := environment methods select: [ :m |
 		                    m selector = methodName ].
 	self initialize: collectedMethods.
 	^ self runHeuristics
 ]
 
-{ #category : 'as yet unclassified' }
-TypeMe >> extractTypesForMethod: aString fromClasses: aCollection [ 
+{ #category : 'extracting' }
+TypeMe >> extractTypesForMethod: aString fromClasses: aCollection [
 
 	| compiledMethods |
-	compiledMethods := aCollection collect: [ :e| (Smalltalk globals at: e asSymbol) >> aString asSymbol ].
+	
+	compiledMethods := aCollection collect: [ :e |
+		                   (environment at: e asSymbol)
+		                   >> aString asSymbol ].
 	self initialize: compiledMethods.
 	^ self runHeuristics
 ]
@@ -120,9 +124,9 @@ TypeMe >> extractTypesForMethod: aString fromClasses: aCollection [
 TypeMe >> extractTypesForMethods: methodNameCollection [
 
 	| collectedMethods |
-	self halt.
-	collectedMethods := Smalltalk globals methods select: [ :m |
-		                    methodNameCollection includes:  m selector ].
+
+	collectedMethods := environment methods select: [ :m |
+		                    methodNameCollection includes: m selector ].
 
 	self initialize: collectedMethods.
 	^ self runHeuristics
@@ -132,7 +136,7 @@ TypeMe >> extractTypesForMethods: methodNameCollection [
 TypeMe >> extractTypesForPackage: packageName [
 
 	| collectedMethods |
-	collectedMethods := (self packageOrganizer packageNamed: packageName)
+	collectedMethods := (environment organization packageNamed: packageName)
 		                    methods.
 
 	self initialize: collectedMethods.
@@ -144,7 +148,7 @@ TypeMe >> extractTypesForPackages: packageNameCollection [
 
 	| collectedMethods |
 	collectedMethods := packageNameCollection flatCollect: [ :packageName |
-		                    (self packageOrganizer packageNamed: packageName)
+		                    (environment organization packageNamed: packageName)
 			                    methods ].
 		
 	self initialize: collectedMethods.
@@ -199,13 +203,23 @@ TypeMe >> getClassName: method [
 { #category : 'instance creation' }
 TypeMe >> initialize: methodsCollection [
 
+	environment ifNil: [
+		self initialize: methodsCollection onEnvironment: Smalltalk globals ]
+	ifNotNil: [
+		self initialize: methodsCollection onEnvironment: environment ]
+]
+
+{ #category : 'instance creation' }
+TypeMe >> initialize: methodsCollection onEnvironment: anEnvironment [
+
 	inputMethods := methodsCollection.
 	methodsWithSingleReturn := inputMethods select: [ :method |
 		                           ASTHelper ifMethodHasOneReturnStatement:
 			                           method ast ].
 	exploredTypes := OrderedCollection new.
 	exploredMethods := OrderedCollection new.
-	typeResult := OrderedCollection new
+	typeResult := OrderedCollection new.
+	environment := anEnvironment
 ]
 
 { #category : 'accessing' }
@@ -331,7 +345,7 @@ TypeMe >> methodsReturnSelf [
 
 	^ self formatWithSelf: ((((methodsWithSingleReturn collect: [ :m |
 			      (ASTHelper getSingleReturn: m) -> m ]) select: [ :pair |
-			     pair key value class = RBVariableNode ]) select: [ :pair |
+			     pair key value class = OCVariableNode ]) select: [ :pair |
 			    pair key value name = 'self' ]) collect: [ :pair | pair value ])
 ]
 
@@ -393,9 +407,8 @@ TypeMe >> printToCSV: typeCollection [
 
 	| typesFile |
 	typesFile := FileLocator
-		             fromPath:
-		             'pharo-local/iceberg/typeMe/types.csv' asPath
-		             ifNone: [].
+		             fromPath: 'pharo-local/iceberg/typeMe/types.csv' asPath
+		             ifNone: [  ].
 
 	typesFile asFileReference writeStreamDo: [ :file |
 		ZnBufferedWriteStream
@@ -417,6 +430,12 @@ TypeMe >> runHeuristics [
 		self checkForAnomaly: methodResult ].
 	
 	^ typeResult
+]
+
+{ #category : 'instance creation' }
+TypeMe >> setEnvironment: anEnvironment [
+
+	environment := anEnvironment
 ]
 
 { #category : 'accessing' }

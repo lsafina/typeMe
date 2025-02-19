@@ -9,62 +9,61 @@ Class {
 ScopeTest >> setUp [
 
 	super setUp.
-	testConfiguration := '
-		[
-			{ 
-				"packageName": "TypeMe-TestPackage-1",
-				"classes": [
-					{ "className": "TestClassA", "methods": [ 
-									{"isTrue" : ""}, 
-									{"initialize" : "^ self new"}, 
-									{"asString" : ""} ]},
-					{ "className": "TestClassB", "methods": [ 
-									{"add:to" : ""}, 
-									{"mySize" : "^1"}, 
-									{"testmeUpdateMethod" : ""}]} 
-				] 
-			},
-			{ 
-				"packageName": "TypeMe-TestPackage-2",
-				"classes": [
-					{ "className": "TestClassC", "methods": [ 
-							{"hasName" : ""}, 
-							{"testmeUpdateMethod": ""}, 
-							{"testCreation": "self setUp" } ]}
-				] 
-			}
-		]
-	'.
 
-	(TypeMeTestHelper installTestConfiguration: testConfiguration)
-		ifFalse: [ self skip: 'Skipping all tests in this class.' ]
+	TypeMeTestHelper
+		installTestMethods: (OrderedCollection newFrom:
+				 { 'isTrue ^ true'. 'initialize ^ self new'.
+				 'asString a asString' })
+		onTestClass: (TypeMeTestHelper
+				 createTestClass: #TypeMeTestClassA
+				 package: 'TypeMe-TestPackage-1'
+				 instVariables: { 'a' }
+				 onEnvironment: testEnvironment).
+
+	TypeMeTestHelper
+		installTestMethods: (OrderedCollection newFrom:
+				 { 'add: a to: b ^ true'. 'mySize ^ 1'. 'testmeUpdateMethod ^ nil' })
+		onTestClass: (TypeMeTestHelper
+				 createTestClass: #TypeMeTestClassB
+				 package: 'TypeMe-TestPackage-1'
+				 instVariables: { 'a'. 'b' }
+				 onEnvironment: testEnvironment).
+
+	TypeMeTestHelper
+		installTestMethods: (OrderedCollection newFrom:
+				 { 'hasName ^ true'. 'testCreation self setUp'.
+				 'testmeUpdateMethod ^ nil' })
+		onTestClass: (TypeMeTestHelper
+				 createTestClass: #TypeMeTestClassC
+				 package: 'TypeMe-TestPackage-2'
+				 instVariables: { 'a'. 'b' }
+				 onEnvironment: testEnvironment)
 ]
 
 { #category : 'running' }
 ScopeTest >> tearDown [
-	"remove test configuration from the image"
 
-	TypeMeTestHelper removeTestConfiguration: testConfiguration
+	TypeMeTestHelper cleanTestEnvironment: testEnvironment
 ]
 
 { #category : 'tests' }
 ScopeTest >> testExtractTypesForClass [
 
-	typer extractTypesForClass: 'TestClassA'.
+	typer extractTypesForClass: 'TypeMeTestClassA'.
 	self assert: typer inputMethods size equals: 3
 ]
 
 { #category : 'tests' }
 ScopeTest >> testExtractTypesForClasses [
 
-	typer extractTypesForClasses: #( TestClassA TestClassB TestClassC ).
+	typer extractTypesForClasses: #( TypeMeTestClassA TypeMeTestClassB TypeMeTestClassC ).
 	self assert: typer inputMethods size equals: 9
 ]
 
 { #category : 'tests' }
 ScopeTest >> testExtractTypesForMethod [
 
-	typer extractTypesForMethod: 'testmeUpdateMethod' fromClasses: { 'TestClassB' . 'TestClassC' }.
+	typer extractTypesForMethod: 'testmeUpdateMethod'.
 	
 	self assert: typer inputMethods size equals: 2
 ]

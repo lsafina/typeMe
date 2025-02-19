@@ -5,27 +5,27 @@ Class {
 	#package : 'TypeMe'
 }
 
-{ #category : 'as yet unclassified' }
+{ #category : 'accessing' }
 ASTHelper class >> getClassFromReturnNew: aReturn [
 	"assuming that necessary checks of ifReturnReturnsClassNew has been made"
 
 	^ aReturn value variable name
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'accessing' }
 ASTHelper class >> getClassNameFromReturnNew: aReturn [
 	"assuming that necessary checks of ifReturnReturnsClassNew has been made"
 
 	^ aReturn value receiver variable name
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'accessing' }
 ASTHelper class >> getReturnLiteralNode: aReturn [
 
 	^ aReturn value value
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'accessing' }
 ASTHelper class >> getSingleReturn: aMethod [
 	"assuming that necessary checks of ifReturnReturnsClassNew has been made"
 
@@ -56,57 +56,54 @@ ASTHelper class >> ifMethodReturnOnlyNil: methodAST [
 	^ false
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'accessing' }
 ASTHelper class >> ifReturnReturnsClass: aReturn [
 
 	| value |
 	value := aReturn value.
-	value class = RBVariableNode ifFalse: [ ^ false ].	
+	value class = OCVariableNode ifFalse: [ ^ false ].
 	value variable class = GlobalVariable ifFalse: [ ^ false ].
 	^ value variable isGlobalClassNameBinding
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'accessing' }
 ASTHelper class >> ifReturnReturnsClassNew: aReturn [
 
 	| value |
-
 	value := aReturn value.
-	value class = RBMessageNode ifFalse: [ ^ false ].
-	value receiver class = RBVariableNode ifFalse: [ ^ false ].
+	value class = OCMessageNode ifFalse: [ ^ false ].
+	value receiver class = OCVariableNode ifFalse: [ ^ false ].
 	value selector = 'new' ifFalse: [ ^ false ].
 	value receiver variable class = GlobalVariable ifFalse: [ ^ false ].
 	^ value receiver variable isGlobalClassNameBinding
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'accessing' }
 ASTHelper class >> ifReturnReturnsLiteralNode: aReturn [
 
-	^ aReturn value class = RBLiteralValueNode
-	 
+	^ aReturn value class = OCLiteralValueNode
 ]
 
-{ #category : 'as yet unclassified' }
+{ #category : 'accessing' }
 ASTHelper class >> ifReturnReturnsSelfNew: aReturn [
 
 	| value |
 	value := aReturn value.
-	value class = RBMessageNode ifFalse: [ ^ false ].
-	value receiver class = RBVariableNode ifFalse: [ ^ false ].
+	value class = OCMessageNode ifFalse: [ ^ false ].
+	value receiver class = OCVariableNode ifFalse: [ ^ false ].
 	value selector = 'new' ifFalse: [ ^ false ].
 	^ value receiver variable class = SelfVariable
-	
 ]
 
 { #category : 'testing' }
 ASTHelper class >> isLiteralNode: astNode [
 
-	^ astNode class = RBLiteralValueNode
+	^ astNode class = OCLiteralValueNode
 ]
 
 { #category : 'testing' }
 ASTHelper class >> isNilValue: aReturnValue [
 
-	^ aReturnValue class = RBLiteralValueNode and:
+	^ aReturnValue class = OCLiteralValueNode and:
 		  aReturnValue value isNil
 ]

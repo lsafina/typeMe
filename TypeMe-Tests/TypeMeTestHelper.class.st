@@ -16,9 +16,30 @@ TypeMeTestHelper class >> checkTestConfiguration: testConfiguration [
 { #category : 'as yet unclassified' }
 TypeMeTestHelper class >> cleanTestConfigurations [
 
+	"TODO: update for use with environment"
 	
-	(PackageOrganizer default packages select:  [ :p | p name beginsWith: 'TypeMe-TestPackage' ])
-		do: [ :p | p removeFromSystem ]
+	(PackageOrganizer default packages select: [ :p |
+		 p name beginsWith: 'TypeMe-TestPackage' ]) do: [ :p |
+		p removeFromSystem ]
+]
+
+{ #category : 'as yet unclassified' }
+TypeMeTestHelper class >> cleanTestEnvironment: testEnvironment [
+
+	testEnvironment organization packages do: [:package | package removeFromSystem ]
+]
+
+{ #category : 'as yet unclassified' }
+TypeMeTestHelper class >> createTestClass: className package: packageName instVariables: instVarCol onEnvironment: anEnvironment [
+	
+	^ ShiftClassInstaller new make: [ :builder |
+	             builder
+		             name: className ;
+		             slots: instVarCol;
+		             package: packageName ;
+		             installingEnvironment: anEnvironment ].
+	
+
 ]
 
 { #category : 'as yet unclassified' }
@@ -38,6 +59,12 @@ TypeMeTestHelper class >> installTestConfiguration: testConfiguration [
 	 
 	self installTestObjects: ts. 
 	^ true
+]
+
+{ #category : 'as yet unclassified' }
+TypeMeTestHelper class >> installTestMethods: methodsCol onTestClass: testClass [
+	
+	methodsCol do: [ :method | testClass compile: method ]
 ]
 
 { #category : 'as yet unclassified' }
