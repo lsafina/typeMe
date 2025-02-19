@@ -16,15 +16,9 @@ TypeMeTestHelper class >> checkTestConfiguration: testConfiguration [
 { #category : 'as yet unclassified' }
 TypeMeTestHelper class >> cleanTestConfigurations [
 
-	|packageNames|
 	
-	packageNames := nil. "TODO retrieve all created packages"	
-
-	packageNames do: [:packageName | 
-		|package |	
-		package := Package organizer packageNamed: packageName ifAbsent: nil.
-		package ifNotNil: [ package removeFromSystem ].
-	]
+	(PackageOrganizer default packages select:  [ :p | p name beginsWith: 'TypeMe-TestPackage' ])
+		do: [ :p | p removeFromSystem ]
 ]
 
 { #category : 'as yet unclassified' }
@@ -32,7 +26,7 @@ TypeMeTestHelper class >> installTestConfiguration: testConfiguration [
 
 	| ts |
 	
-	ts := NeoJSONReader fromString: testConfiguration.
+	ts := (STONReader on:  testConfiguration readStream) next.
 
 	"check if test configuration can be installed in the image"
 	(self checkTestConfiguration: ts)
@@ -91,7 +85,7 @@ TypeMeTestHelper class >> removeTestConfiguration: testConfiguration [
 	|result|
 	
 	result := true.	
-	(NeoJSONReader fromString: testConfiguration) do: [ :packageRecord |
+	(STONReader on: testConfiguration readStream ) next do: [ :packageRecord |
 		| package packageName |
 		packageName := packageRecord values first.
 		package := Package organizer packageNamed: packageName ifAbsent: nil.
