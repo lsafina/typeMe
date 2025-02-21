@@ -90,13 +90,10 @@ TypeMeTest >> testMethodsReturnClass [
 TypeMeTest >> testMethodsReturnClassNew [
 
 	| result |
-	self skip.
-	self flag: #todo.
-	"I need to work on this."
-	
-		TypeMeTestHelper
+	TypeMeTestHelper
 		installTestMethods: (OrderedCollection newFrom:
-				 { 'returnClassNew ^ TypeMeReturnClass new'. 'returnClass ^ TypeMeReturnClass'. 'returnNil ^nil' })
+				 { 'returnClassNew ^ TypeMeReturnClassNew new'. 'returnClass ^ TypeMeReturnClassNew'.
+				 'returnNil ^nil' })
 		onTestClass: (TypeMeTestHelper
 				 createTestClass: #TypeMeReturnClassNew
 				 package: 'TypeMe-TestPackage-ReturnClassNew'
@@ -112,7 +109,7 @@ TypeMeTest >> testMethodsReturnClassNew [
 		equals: 'returnClassNew'.
 	self
 		assert: (result collect: [ :a | a fourth ]) first
-		equals: 'TypeMeReturnClass'.
+		equals: 'TypeMeReturnClassNew'.
 
 	TypeMeTestHelper cleanTestEnvironment: testEnvironment
 ]
@@ -121,32 +118,29 @@ TypeMeTest >> testMethodsReturnClassNew [
 TypeMeTest >> testMethodsReturnLiteralNode [
 
 	| result |
-	self skip.
-	self flag: #todo.
-	"I need to work on this."
-	
-		TypeMeTestHelper
+	TypeMeTestHelper
 		installTestMethods: (OrderedCollection newFrom:
-				 {'returnNumber ^5' . 'returnString ^ ''BFS''' . 'returnBoolean ^ true' . 'returnNotLiteral ^ nil'})
+				 { 'returnNumber ^5'. 'returnString ^ ''BFS'''.
+				 'returnBoolean ^ true'. 'returnNil ^ nil' . 'returnNotLiteral ^ a'})
 		onTestClass: (TypeMeTestHelper
 				 createTestClass: #TypeMeReturnLiteral
 				 package: 'TypeMe-TestPackage-ReturnLiteral'
-				 instVariables: {  }
+				 instVariables: { 'a' }
 				 onEnvironment: testEnvironment).
 
 	typer extractTypesForPackage: 'TypeMe-TestPackage-ReturnLiteral'.
 	result := typer methodsReturnLiteralNode.
 
-	self assert: result size equals: 3.
+	self assert: result size equals: 4.
 	self assert:
 		((result collect: [ :a | a third ]) allSatisfy: [ :methodName |
-			 { 'returnNumber'. 'returnString'. 'returnBoolean' } includes:
+			 { 'returnNumber'. 'returnString'. 'returnBoolean' . 'returnNil' } includes:
 				 methodName ]).
-
-	self assert: (result collect: [ :a | a fourth ]) asSet size equals: 1.
 	self
-		assert: (result collect: [ :a | a fourth ]) asSet atRandom
-		equals: 'Literal'.
+		assert: ((result collect: [ :a | a fourth ]) allSatisfy: [ :type |
+			 { 'SmallInteger'. 'UndefinedObject'. 'ByteString' . 'True' } includes:
+				 type ]).
+
 
 	TypeMeTestHelper cleanTestEnvironment: testEnvironment
 ]
@@ -155,13 +149,12 @@ TypeMeTest >> testMethodsReturnLiteralNode [
 TypeMeTest >> testMethodsReturnNil [
 
 	| result |
-	self skip.
-	self flag: #todo.
-	"I need to work on this."
-	
-		TypeMeTestHelper
-		installTestMethods: (OrderedCollection newFrom:
-				 {'returnOneNil self yourself. ^ nil' . 'returnTwothings self ifNil: [^ nil] ifNotNil: [^nil]' . 'noExplicitReturn self yourself'})
+
+	TypeMeTestHelper
+		installTestMethods:
+			(OrderedCollection newFrom: { 'returnOneNil self yourself. ^ nil'.
+				 'returnTwothings self ifNil: [^ nil] ifNotNil: [^nil]'.
+				 'noExplicitReturn self yourself' })
 		onTestClass: (TypeMeTestHelper
 				 createTestClass: #TypeMeReturnOneNil
 				 package: 'TypeMe-TestPackage-ReturnOneNil'
@@ -175,7 +168,7 @@ TypeMeTest >> testMethodsReturnNil [
 	self
 		assert: (result collect: [ :a | a third ]) first
 		equals: 'returnOneNil'.
-	self assert: (result collect: [ :a | a fourth ]) first equals: 'nil'.
+	self assert: (result collect: [ :a | a fourth ]) first equals: nil.
 
 	TypeMeTestHelper cleanTestEnvironment: testEnvironment
 ]
@@ -245,10 +238,6 @@ TypeMeTest >> testMethodsReturnSelf [
 TypeMeTest >> testMethodsReturnSelfNew [
 
 	| result |
-	self skip.
-	self flag: #todo.
-	"I need to work on this."
-
 	TypeMeTestHelper
 		installTestMethods: (OrderedCollection newFrom:
 				 { 'returnOneSelf self yourself. ^ self new'.
@@ -260,22 +249,8 @@ TypeMeTest >> testMethodsReturnSelfNew [
 				 instVariables: {  }
 				 onEnvironment: testEnvironment).
 
-
-	testConfiguration := '
-		[
-			{ 
-				"packageName": "TypeMe-TestPackage-ReturnSelf",
-				"classes": [
-					{ "className": "TypeMeReturnSelf", "methods": [ {"returnOneSelf": "self yourself. ^ self new"}, {"returnTwoSelf": "true ifTrue: [^ self] ifFalse: [^self]"}, {"returnNotSelf": "self yourself. ^ nil"}]}
-				]
-			}
-		]
-	'.
-
-	TypeMeTestHelper installTestConfiguration: testConfiguration.
-
 	typer extractTypesForPackage: 'TypeMe-TestPackage-ReturnSelf'.
-	result := typer methodsReturnSelf.
+	result := typer methodsReturnSelfNew.
 
 	self assert: result size equals: 1.
 	self
@@ -284,34 +259,6 @@ TypeMeTest >> testMethodsReturnSelfNew [
 	self
 		assert: (result collect: [ :a | a fourth ]) first
 		equals: 'TypeMeReturnSelf'.
-
-	TypeMeTestHelper cleanTestEnvironment: testEnvironment
-]
-
-{ #category : 'tests' }
-TypeMeTest >> testMethodsReturnSmallInteger [
-
-	| result |
-	self skip.
-	self flag: #todo.
-	"I need to work on this."
-
-	TypeMeTestHelper
-		installTestMethods: (OrderedCollection newFrom: { 'hash ^nil' })
-		onTestClass: (TypeMeTestHelper
-				 createTestClass: #TypeMeReturnSmallInteger
-				 package: 'TypeMe-TestPackage-ReturnSmallInteger'
-				 instVariables: {  }
-				 onEnvironment: testEnvironment).
-
-	typer extractTypesForPackage: 'TypeMe-TestPackage-ReturnSmallInteger'.
-	result := typer methodsReturnSmallInteger.
-
-	self assert: result size equals: 1.
-	self assert: (result collect: [ :a | a third ]) first equals: 'hash'.
-	self
-		assert: (result collect: [ :a | a fourth ])
-		equals: 'SmallInteger'.
 
 	TypeMeTestHelper cleanTestEnvironment: testEnvironment
 ]

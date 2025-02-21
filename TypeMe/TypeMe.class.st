@@ -22,6 +22,12 @@ Class {
 	#tag : 'Objects'
 }
 
+{ #category : 'as yet unclassified' }
+TypeMe >> checkEnvironment [
+
+	environment ifNil: [ environment := Smalltalk globals ]
+]
+
 { #category : 'analyzing' }
 TypeMe >> checkForAnomaly: typeCollection [
 
@@ -135,11 +141,9 @@ TypeMe >> extractTypesForMethods: methodNameCollection [
 { #category : 'extracting' }
 TypeMe >> extractTypesForPackage: packageName [
 
-	| collectedMethods |
-	collectedMethods := (environment organization packageNamed: packageName)
-		                    methods.
-
-	self initialize: collectedMethods.
+	self checkEnvironment.
+	self initialize:
+		(environment organization packageNamed: packageName) methods.
 	^ self runHeuristics
 ]
 
@@ -203,10 +207,13 @@ TypeMe >> getClassName: method [
 { #category : 'instance creation' }
 TypeMe >> initialize: methodsCollection [
 
-	environment ifNil: [
-		self initialize: methodsCollection onEnvironment: Smalltalk globals ]
-	ifNotNil: [
-		self initialize: methodsCollection onEnvironment: environment ]
+	inputMethods := methodsCollection.
+	methodsWithSingleReturn := inputMethods select: [ :method |
+		                           ASTHelper ifMethodHasOneReturnStatement:
+			                           method ast ].
+	exploredTypes := OrderedCollection new.
+	exploredMethods := OrderedCollection new.
+	typeResult := OrderedCollection new.
 ]
 
 { #category : 'instance creation' }
@@ -269,14 +276,15 @@ TypeMe >> methodsReturnBoolean [
 { #category : 'heuristics' }
 TypeMe >> methodsReturnClass [
 	"collects method that have only one return statement which returns a class (^ %ClassName%)"
-| result |
 
+	| result |
 	result := OrderedCollection new.
 	methodsWithSingleReturn do: [ :method |
 		| aReturn |
 		aReturn := ASTHelper getSingleReturn: method.
 		(ASTHelper ifReturnReturnsClass: aReturn) ifTrue: [
-			result add: ((ASTHelper getClassFromReturnNew: aReturn) , ' class') -> method ] ].
+			result add:
+				(ASTHelper getClassFromReturnNew: aReturn) , ' class' -> method ] ].
 
 	^ self format: result
 ]
@@ -286,7 +294,7 @@ TypeMe >> methodsReturnClassNew [
 	"collects method that have only one return statement which returns a class new (^ %ClassName% new)"
 
 	| result |
-
+	
 	result := OrderedCollection new.
 	methodsWithSingleReturn do: [ :method |
 		| aReturn |
@@ -360,14 +368,20 @@ TypeMe >> methodsReturnSelfNew [
 
 { #category : 'heuristics' }
 TypeMe >> methodsReturnSmallInteger [
-	"collect methods that we expect to return SmallInteger"
+	"There is not enough evidence that hash alwasy return SmallInteger"
+	
+	^ { }
+
+	"	""collect methods that we expect to return SmallInteger""
 
 	^ self
 		  format: ({ 'hash' } flatCollect: [ :aString |
 				   self
 					   methods: methodsWithSingleReturn
 					   selectorEqualsString: aString ])
-		  withType: #Number
+		  withType: #Number"
+
+	
 ]
 
 { #category : 'heuristics' }
@@ -422,13 +436,13 @@ TypeMe >> printToCSV: typeCollection [
 
 { #category : 'run' }
 TypeMe >> runHeuristics [
-	
+
 	(self class selectorsInProtocol: 'heuristics') do: [ :method |
 		| methodResult |
 		methodResult := self perform: method.
 		typeResult addAll: methodResult.
 		self checkForAnomaly: methodResult ].
-	
+
 	^ typeResult
 ]
 
