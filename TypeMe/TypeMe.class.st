@@ -12,48 +12,46 @@ Class {
 	#instVars : [
 		'environment',
 		'inputMethods',
-		'methodsWithSingleReturn',
-		'exploredTypes',
-		'exploredMethods',
-		'typeResult'
+		'typeResults'
 	],
 	#category : 'TypeMe-Objects',
 	#package : 'TypeMe',
 	#tag : 'Objects'
 }
 
-{ #category : 'as yet unclassified' }
-TypeMe >> checkEnvironment [
-
-	environment ifNil: [ environment := Smalltalk globals ]
-]
-
 { #category : 'analyzing' }
-TypeMe >> checkForAnomaly: typeCollection [
+TypeMe >> addToResults: typeCollection [
 
-	| intersection typeCollectionMethods |
-	typeCollectionMethods := typeCollection collect: [ :typeRecord |
-		                         {
-			                         typeRecord first.
-			                         typeRecord second.
-			                         typeRecord third } ].
-	intersection := exploredMethods intersection: typeCollection.
-	intersection ifNotEmpty: [
-		Warning signal: 'This method has been alredy analyzed'. "TODO: here we check for discprepancies between results" ].
-	exploredTypes addAll: typeCollection.
-	exploredMethods addAll: typeCollectionMethods
+	| typesToProcess |
+	typesToProcess := typeCollection asOrderedCollection.
+	[ typesToProcess isNotEmpty ] whileTrue: [
+			| array methodArray |
+			array := typesToProcess removeLast.
+			methodArray := array first: 3.
+			typeResults
+				detect: [ :any | (any first: 3) = methodArray ]
+				ifFound: [ :found |
+						found fourth = array fourth
+							ifTrue: [ "we already have it, skip it" ]
+							ifFalse: [
+									self notify:
+										'This method has been alredy analyzed with different result' ] ]
+				ifNone: [ "new item" typeResults add: array ] ]
+]
+
+{ #category : 'aggregating' }
+TypeMe >> assertValidName: aName [
+
+	self assert: (aName isKindOf: String).
+	self assert: aName isNotEmpty.
+	self assert: aName ~= 'UndefinedObject'.
+	self assert: aName ~= 'nil'
 ]
 
 { #category : 'accessing' }
-TypeMe >> exploredMethods [
+TypeMe >> environment [
 
-	^ exploredMethods
-]
-
-{ #category : 'accessing' }
-TypeMe >> exploredTypes [
-
-	^ exploredTypes
+	^ environment ifNil: [ environment := Smalltalk globals ]
 ]
 
 { #category : 'extracting' }
@@ -62,7 +60,7 @@ TypeMe >> extractTypesForClass: className [
 	| classObj collectedMethods |
 	collectedMethods := OrderedCollection new.
 
-	classObj := environment classNamed: className.
+	classObj := self environment classNamed: className.
 	classObj ifNil: [
 		self error:
 			'Class ' , className , ' is not found in the image. Aborting.' ].
@@ -82,7 +80,7 @@ TypeMe >> extractTypesForClasses: classNameCollection [
 
 	classNameCollection do: [ :className |
 		| classObj |
-		classObj := environment classNamed: className.
+		classObj := self environment classNamed: className.
 		classObj ifNil: [
 			self error:
 				'Class ' , className , ' is not found in the image. Aborting.' ].
@@ -98,7 +96,7 @@ TypeMe >> extractTypesForClasses: classNameCollection [
 TypeMe >> extractTypesForImage [
 
 	| collectedMethods |
-	collectedMethods := environment methods.
+	collectedMethods := self environment methods.
 
 	self initialize: collectedMethods.
 	^ self runHeuristics
@@ -108,7 +106,7 @@ TypeMe >> extractTypesForImage [
 TypeMe >> extractTypesForMethod: methodName [
 
 	| collectedMethods |
-	collectedMethods := environment methods select: [ :m |
+	collectedMethods := self environment methods select: [ :m |
 		                    m selector = methodName ].
 	self initialize: collectedMethods.
 	^ self runHeuristics
@@ -120,7 +118,7 @@ TypeMe >> extractTypesForMethod: aString fromClasses: aCollection [
 	| compiledMethods |
 	
 	compiledMethods := aCollection collect: [ :e |
-		                   (environment at: e asSymbol)
+		                   (self environment at: e asSymbol)
 		                   >> aString asSymbol ].
 	self initialize: compiledMethods.
 	^ self runHeuristics
@@ -131,7 +129,7 @@ TypeMe >> extractTypesForMethods: methodNameCollection [
 
 	| collectedMethods |
 
-	collectedMethods := environment methods select: [ :m |
+	collectedMethods := self environment methods select: [ :m |
 		                    methodNameCollection includes: m selector ].
 
 	self initialize: collectedMethods.
@@ -141,9 +139,8 @@ TypeMe >> extractTypesForMethods: methodNameCollection [
 { #category : 'extracting' }
 TypeMe >> extractTypesForPackage: packageName [
 
-	self checkEnvironment.
 	self initialize:
-		(environment organization packageNamed: packageName) methods.
+		(self environment organization packageNamed: packageName) methods.
 	^ self runHeuristics
 ]
 
@@ -152,7 +149,7 @@ TypeMe >> extractTypesForPackages: packageNameCollection [
 
 	| collectedMethods |
 	collectedMethods := packageNameCollection flatCollect: [ :packageName |
-		                    (environment organization packageNamed: packageName)
+		                    (self environment organization packageNamed: packageName)
 			                    methods ].
 		
 	self initialize: collectedMethods.
@@ -163,69 +160,72 @@ TypeMe >> extractTypesForPackages: packageNameCollection [
 TypeMe >> format: aCollection [
 
 	^ aCollection collect: [ :pair |
-		  | method |
-		  method := pair value.
-		  {
-			  method package name.
-			  method classBinding name.
-			  method selector.
-			  pair key } ]
+			  | method |
+			  method := pair value.
+			  self
+				  formatPackage: method package name
+				  class: (self getClassName: method)
+				  selector: method selector
+				  type: pair key ]
 ]
 
 { #category : 'aggregating' }
 TypeMe >> format: aCollection withType: aType [
 
 	^ aCollection collect: [ :method |
-		  {
-			  method package name.
-			  self getClassName: method.
-			  method selector.
-			  aType } ]
+			  self
+				  formatPackage: method package name
+				  class: (self getClassName: method)
+				  selector: method selector
+				  type: aType ]
+]
+
+{ #category : 'aggregating' }
+TypeMe >> formatPackage: aPackageName class: aClassName selector: aSelector type: aTypeName [
+
+	| typeName |
+	typeName := self replaceTypeName: aTypeName.
+	self assertValidName: aPackageName.
+	self assertValidName: aClassName.
+	self assertValidName: aSelector.
+	self assertValidName: typeName.
+	^ {
+		  aPackageName.
+		  aClassName.
+		  aSelector.
+		  typeName }
 ]
 
 { #category : 'aggregating' }
 TypeMe >> formatWithSelf: aMethodCollection [
 
 	^ aMethodCollection collect: [ :method |
-		  | classBinding |
-		  classBinding := self getClassName: method.
-		  {
-			  method package name.
-			  classBinding.
-			  method selector.
-			  classBinding } ]
+			  | className |
+			  className := self getClassName: method.
+			  self
+				  formatPackage: method package name
+				  class: className
+				  selector: method selector
+				  type: className ]
 ]
 
 { #category : 'aggregating' }
 TypeMe >> getClassName: method [
 
-^ method isClassSide
-			                  ifTrue: [ method classBinding value name ]
-			                  ifFalse: [ method classBinding name ]
+	^ method methodClass name
 ]
 
 { #category : 'instance creation' }
 TypeMe >> initialize: methodsCollection [
 
 	inputMethods := methodsCollection.
-	methodsWithSingleReturn := inputMethods select: [ :method |
-		                           ASTHelper ifMethodHasOneReturnStatement:
-			                           method ast ].
-	exploredTypes := OrderedCollection new.
-	exploredMethods := OrderedCollection new.
-	typeResult := OrderedCollection new.
+	typeResults := OrderedCollection new
 ]
 
 { #category : 'instance creation' }
 TypeMe >> initialize: methodsCollection onEnvironment: anEnvironment [
 
-	inputMethods := methodsCollection.
-	methodsWithSingleReturn := inputMethods select: [ :method |
-		                           ASTHelper ifMethodHasOneReturnStatement:
-			                           method ast ].
-	exploredTypes := OrderedCollection new.
-	exploredMethods := OrderedCollection new.
-	typeResult := OrderedCollection new.
+	self initialize: methodsCollection.
 	environment := anEnvironment
 ]
 
@@ -261,13 +261,13 @@ TypeMe >> methodsReturnBoolean [
 	^ self
 		  format: (OrderedCollection new
 				   addAll:
-					   ({ '^has[A-Z].*'. '^is[A-Z].*' } flatCollect: [ :aRegex |
+					   ({ '^includes[A-Z].*'. '^has[A-Z].*'. '^is[A-Z].*' } flatCollect: [ :aRegex |
 							    self
-								    methods: methodsWithSingleReturn
+								    methods: inputMethods
 								    selectorMatchesRegex: aRegex ]);
 				   addAll: ({ 'includes'. '=' } flatCollect: [ :aString |
 							    self
-								    methods: methodsWithSingleReturn
+								    methods: inputMethods
 								    selectorEqualsString: aString ]);
 				   yourself)
 		  withType: #Boolean
@@ -279,12 +279,14 @@ TypeMe >> methodsReturnClass [
 
 	| result |
 	result := OrderedCollection new.
-	methodsWithSingleReturn do: [ :method |
-		| aReturn |
-		aReturn := ASTHelper getSingleReturn: method.
-		(ASTHelper ifReturnReturnsClass: aReturn) ifTrue: [
-			result add:
-				(ASTHelper getClassFromReturnNew: aReturn) , ' class' -> method ] ].
+	inputMethods do: [ :method |
+			ASTHelper
+				ifAllReturnsOf: method ast
+				satisfy: [ :eachReturn |
+				ASTHelper ifReturnReturnsClass: eachReturn ]
+				do: [ :return |
+						result add:
+							(ASTHelper getClassFromReturnNew: return) , ' class' -> method ] ].
 
 	^ self format: result
 ]
@@ -294,14 +296,15 @@ TypeMe >> methodsReturnClassNew [
 	"collects method that have only one return statement which returns a class new (^ %ClassName% new)"
 
 	| result |
-	
 	result := OrderedCollection new.
-	methodsWithSingleReturn do: [ :method |
-		| aReturn |
-		aReturn := ASTHelper getSingleReturn: method.
-		(ASTHelper ifReturnReturnsClassNew: aReturn) ifTrue: [
-			result add:
-				(ASTHelper getClassNameFromReturnNew: aReturn) -> method ] ].
+	inputMethods do: [ :method |
+			ASTHelper
+				ifAllReturnsOf: method ast
+				satisfy: [ :eachReturn |
+				ASTHelper ifReturnReturnsClassNew: eachReturn ]
+				do: [ :return |
+					result add:
+						(ASTHelper getClassNameFromReturnNew: return) -> method ] ].
 
 	^ self format: result
 ]
@@ -313,12 +316,17 @@ TypeMe >> methodsReturnLiteralNode [
 	| literalToMethod |
 	literalToMethod := OrderedCollection new.
 
-	methodsWithSingleReturn do: [ :method |
-		| returnSt |
-		returnSt := ASTHelper getSingleReturn: method.
-		(ASTHelper ifReturnReturnsLiteralNode: returnSt) ifTrue: [
-			literalToMethod add:
-				(ASTHelper getReturnLiteralNode: returnSt) className -> method ] ].
+	inputMethods do: [ :method |
+			ASTHelper
+				ifAllReturnsOf: method ast
+				satisfy: [ :eachReturn |
+				ASTHelper ifReturnReturnsLiteralNode: eachReturn ]
+				do: [ :return |
+						self haltIf: [
+							(ASTHelper getReturnLiteralNode: return) className
+							= 'UndefinedObject' ].
+						literalToMethod add:
+							(ASTHelper getReturnLiteralNode: return) className -> method ] ].
 
 	^ self format: literalToMethod
 ]
@@ -327,10 +335,13 @@ TypeMe >> methodsReturnLiteralNode [
 TypeMe >> methodsReturnNil [
 	"collects method that have only one return statement which returns nil (^ nil)"
 
-	^ self
-		  format: (methodsWithSingleReturn select: [ :method |
+	"^ self
+		  format: (inputMethods select: [ :method |
 				   ASTHelper ifMethodReturnOnlyNil: method ast ])
-		  withType: nil
+		  withType: nil"
+
+	self flag: 'Jan: do we really want to use nil as a return type?'.
+	^ {  }
 ]
 
 { #category : 'heuristics' }
@@ -340,48 +351,51 @@ TypeMe >> methodsReturnNumber [
 	^ self
 		  format: ({ 'size'. 'priority' } flatCollect: [ :aString |
 				   self
-					   methods: methodsWithSingleReturn
+					   methods: inputMethods
 					   selectorEqualsString: aString ])
 		  withType: #Number
 ]
 
 { #category : 'heuristics' }
 TypeMe >> methodsReturnSelf [
-	"collects methods that have only one return statement which returns a self (^ self)"
 
-	"TODO: refactor"
-
-	^ self formatWithSelf: ((((methodsWithSingleReturn collect: [ :m |
-			      (ASTHelper getSingleReturn: m) -> m ]) select: [ :pair |
-			     pair key value class = OCVariableNode ]) select: [ :pair |
-			    pair key value name = 'self' ]) collect: [ :pair | pair value ])
+	| results |
+	results := OrderedCollection new.
+	inputMethods do: [ :method |
+			method isAbstract ifFalse: [
+					ASTHelper
+						ifAllReturnsOf: method ast
+						satisfy: [ :eachReturn | eachReturn value isSelfVariable ]
+						do: [ :return | results add: method ] ] ].
+	^ self formatWithSelf: results
 ]
 
 { #category : 'heuristics' }
 TypeMe >> methodsReturnSelfNew [
 	"collects methods that have only one return statement which returns a self new (^ self new)"
 
-	^ self formatWithSelf: (methodsWithSingleReturn select: [ :method |
-			   ASTHelper ifReturnReturnsSelfNew:
-				   (ASTHelper getSingleReturn: method) ])
+	| results |
+	results := OrderedCollection new.
+	inputMethods do: [ :method |
+			ASTHelper
+				ifAllReturnsOf: method ast
+				satisfy: [ :eachReturn |
+				ASTHelper ifReturnReturnsSelfNew: eachReturn ]
+				do: [ :return | results add: method ] ].
+	results ifEmpty: [ ^ {  } ].
+	^ self
+		  format: results
+		  withType: results anyOne methodClass soleInstance
 ]
 
 { #category : 'heuristics' }
 TypeMe >> methodsReturnSmallInteger [
-	"There is not enough evidence that hash alwasy return SmallInteger"
-	
-	^ { }
-
-	"	""collect methods that we expect to return SmallInteger""
+	"collect methods that we expect to return SmallInteger"
 
 	^ self
 		  format: ({ 'hash' } flatCollect: [ :aString |
-				   self
-					   methods: methodsWithSingleReturn
-					   selectorEqualsString: aString ])
-		  withType: #Number"
-
-	
+				   self methods: inputMethods selectorEqualsString: aString ])
+		  withType: #Integer
 ]
 
 { #category : 'heuristics' }
@@ -389,23 +403,10 @@ TypeMe >> methodsReturnString [
 	"collect methods that we expect to return String"
 
 	^ self
-		  format: (methodsWithSingleReturn select: [ :method |
-				   method selector endsWith: 'String' ])
+		  format:
+		  (inputMethods select: [ :method |
+			   method selector endsWith: 'String' ])
 		  withType: #String
-]
-
-{ #category : 'heuristics' }
-TypeMe >> methodsWithNoReturnStatement [
-	"their type correspond to the class of receiver"
-
-	^ self formatWithSelf: (inputMethods reject: [ :method |
-			   ASTHelper ifMethodHasReturnStatements: method ast ])
-]
-
-{ #category : 'accessing' }
-TypeMe >> methodsWithSingleReturn [
-
-	^ methodsWithSingleReturn
 ]
 
 { #category : 'printing' }
@@ -419,31 +420,39 @@ TypeMe >> print: typeCollection to: aFormat [
 { #category : 'printing' }
 TypeMe >> printToCSV: typeCollection [
 
-	| typesFile |
+	| typesFile fileReference |
 	typesFile := FileLocator
 		             fromPath: 'pharo-local/iceberg/typeMe/types.csv' asPath
-		             ifNone: [  ].
+		             ifNone: [ ].
+	fileReference := typesFile asFileReference.
+	fileReference ensureDelete.
+	fileReference writeStreamDo: [ :stream |
+			ZnBufferedWriteStream
+				on: stream
+				do: [ :out |
+						| writer |
+						writer := NeoCSVWriter on: out.
+						writer writeHeader: { #Package. #Class. #Selector. #Types }.
+						typeCollection do: [ :each | writer nextPut: each ] ] ]
+]
 
-	typesFile asFileReference writeStreamDo: [ :file |
-		ZnBufferedWriteStream
-			on: file
-			do: [ :out |
-				| writer |
-				writer := NeoCSVWriter on: out.
-				writer writeHeader: { #Package. #Class. #Selector. #Types }.
-				typeCollection do: [ :each | writer nextPut: each ] ] ]
+{ #category : 'aggregating' }
+TypeMe >> replaceTypeName: aTypeName [
+
+	aTypeName = 'True' ifTrue: [ ^ 'Boolean' ].
+	aTypeName = 'False' ifTrue: [ ^ 'Boolean' ].
+	^ aTypeName
 ]
 
 { #category : 'run' }
 TypeMe >> runHeuristics [
 
 	(self class selectorsInProtocol: 'heuristics') do: [ :method |
-		| methodResult |
-		methodResult := self perform: method.
-		typeResult addAll: methodResult.
-		self checkForAnomaly: methodResult ].
+			| methodResult |
+			methodResult := self perform: method.
+			self addToResults: methodResult ].
 
-	^ typeResult
+	^ typeResults
 ]
 
 { #category : 'instance creation' }
@@ -456,12 +465,13 @@ TypeMe >> setEnvironment: anEnvironment [
 TypeMe >> statistics [
 
 	^ inputMethods
-		ifNotNil: [
-			Dictionary newFrom: {
-					('Total amount of methods' -> inputMethods size).
-					('Amount of methods typed' -> typeResult size).
-					('% of typed'
-					 -> (typeResult size / inputMethods size asFloat * 100
-							  printShowingDecimalPlaces: 2)) } ]
-		ifNil: [ ^ Warning signal: 'Run type extraction to get statistics' ]
+		  ifNotNil: [
+				  Dictionary newFrom: {
+						  ('Total amount of methods' -> inputMethods size).
+						  ('Amount of methods typed' -> typeResults size).
+						  ('% of typed'
+						   -> (typeResults size / inputMethods size asFloat * 100
+								    printShowingDecimalPlaces: 2)) } ]
+		  ifNil: [
+		  ^ Warning signal: 'Run type extraction to get statistics' ]
 ]
