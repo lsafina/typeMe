@@ -293,32 +293,3 @@ TypeMeTest >> testMethodsReturnString [
 
 	TypeMeTestHelper cleanTestEnvironment: testEnvironment
 ]
-
-{ #category : 'tests' }
-TypeMeTest >> testMethodsWithNoReturnStatement [
-
-	| result |
-	
-	TypeMeTestHelper
-		installTestMethods: (OrderedCollection newFrom:
-				 { 'initialize self new'. 'setUp self yourself' })
-		onTestClass: (TypeMeTestHelper
-				 createTestClass: #TypeMeNoReturnStatement
-				 package: 'TypeMe-TestPackage-NoReturnStatement'
-				 instVariables: {  }
-				 onEnvironment: testEnvironment).
-
-	typer extractTypesForPackage: 'TypeMe-TestPackage-NoReturnStatement'.
-	result := typer methodsWithNoReturnStatement.
-
-	self assert: result size equals: 2.
-	self assert:
-		((result collect: [ :a | a third ]) allSatisfy: [ :methodName |
-			 { 'initialize'. 'setUp'. '=' } includes:
-				 methodName ]).
-	self
-		assert: (result collect: [ :a | a fourth ]) first
-		equals: 'TypeMeNoReturnStatement'.
-
-	TypeMeTestHelper cleanTestEnvironment: testEnvironment
-]

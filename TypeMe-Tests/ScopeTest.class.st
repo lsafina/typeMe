@@ -13,7 +13,7 @@ ScopeTest >> setUp [
 	TypeMeTestHelper
 		installTestMethods: (OrderedCollection newFrom:
 				 { 'isTrue ^ true'. 'initialize ^ self new'.
-				 'asString a asString' })
+				 'asString ^ a asString' })
 		onTestClass: (TypeMeTestHelper
 				 createTestClass: #TypeMeTestClassA
 				 package: 'TypeMe-TestPackage-1'

@@ -14,10 +14,45 @@ Class {
 		'inputMethods',
 		'typeResults'
 	],
+	#classInstVars : [
+		'typeNameReplacements'
+	],
 	#category : 'TypeMe-Objects',
 	#package : 'TypeMe',
 	#tag : 'Objects'
 }
+
+{ #category : 'utilities' }
+TypeMe class >> replacementFor: aTypeName [
+
+	^ self typeNameReplacements at: aTypeName ifAbsent: [ aTypeName ]
+]
+
+{ #category : 'class initialization' }
+TypeMe class >> reset [
+
+	typeNameReplacements := nil
+]
+
+{ #category : 'utilities' }
+TypeMe class >> typeNameReplacements [
+
+	^ typeNameReplacements ifNil: [
+			  typeNameReplacements := {
+				                          ('True' -> 'Boolean').
+				                          ('False' -> 'Boolean').
+				                          ('ByteString' -> 'String').
+				                          ('ByteSymbol' -> 'String').
+				                          ('WideString' -> 'String').
+				                          ('WideSymbol' -> 'String').
+				                          ('BoxedFloat64' -> 'Float').
+				                          ('SmallFloat64' -> 'Float').
+				                          ('LargeNegativeInteger' -> 'Integer').
+				                          ('LargePositiveInteger' -> 'Integer').
+				                          ('LargeInteger' -> 'Integer').
+				                          ('SmallInteger' -> 'Integer') }
+				                          asDictionary ]
+]
 
 { #category : 'analyzing' }
 TypeMe >> addToResults: typeCollection [
@@ -30,12 +65,12 @@ TypeMe >> addToResults: typeCollection [
 			methodArray := array first: 3.
 			typeResults
 				detect: [ :any | (any first: 3) = methodArray ]
-				ifFound: [ :found |
-						found fourth = array fourth
-							ifTrue: [ "we already have it, skip it" ]
-							ifFalse: [
-									self notify:
-										'This method has been alredy analyzed with different result' ] ]
+				ifFound: [ :existingArray |
+						self
+							assert: existingArray fourth = array fourth
+							description:
+								'Method ' , methodArray asString , ' has 2 different types: "'
+								, existingArray fourth , '" and "' , array fourth , '"' ]
 				ifNone: [ "new item" typeResults add: array ] ]
 ]
 
@@ -377,11 +412,12 @@ TypeMe >> methodsReturnSelfNew [
 	| results |
 	results := OrderedCollection new.
 	inputMethods do: [ :method |
-			ASTHelper
-				ifAllReturnsOf: method ast
-				satisfy: [ :eachReturn |
-				ASTHelper ifReturnReturnsSelfNew: eachReturn ]
-				do: [ :return | results add: method ] ].
+			method isClassSide ifTrue: [
+					ASTHelper
+						ifAllReturnsOf: method ast
+						satisfy: [ :eachReturn |
+						ASTHelper ifReturnReturnsSelfNew: eachReturn ]
+						do: [ :return | results add: method ] ] ].
 	results ifEmpty: [ ^ {  } ].
 	^ self
 		  format: results
@@ -439,9 +475,7 @@ TypeMe >> printToCSV: typeCollection [
 { #category : 'aggregating' }
 TypeMe >> replaceTypeName: aTypeName [
 
-	aTypeName = 'True' ifTrue: [ ^ 'Boolean' ].
-	aTypeName = 'False' ifTrue: [ ^ 'Boolean' ].
-	^ aTypeName
+	^ self class replacementFor: aTypeName
 ]
 
 { #category : 'run' }
