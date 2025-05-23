@@ -16,12 +16,13 @@ BaselineOfTypeMe >> baseline: spec [
 		
 		spec
 			baseline: 'TypeInfoTools' 
-			with: [ spec repository: 'github://JanBliznicenko/TypeInfoTools:main/src' ].
+			with: [ spec repository: 'github://JanBliznicenko/TypeInfoTools:main' ].
 		
+		spec baseline: 'NeoCSV' with: [ spec repository: 'github://svenvc/NeoCSV' ].		
 		
 		spec 
 			package: #'TypeMe'  with: [
-				spec requires: #('TypeInfoTools')] ;
+				spec requires: #('TypeInfoTools' 'NeoCSV')] ;
 			package: #'TypeMe-Tests' with: [
 				spec requires: #('TypeMe'). ].
 		spec 
