@@ -12,7 +12,8 @@ Class {
 	#instVars : [
 		'environment',
 		'inputMethods',
-		'typeResults'
+		'typeResults',
+		'conflicts'
 	],
 	#classInstVars : [
 		'typeNameReplacements'
@@ -31,6 +32,7 @@ TypeMe class >> replacementFor: aTypeName [
 { #category : 'class initialization' }
 TypeMe class >> reset [
 
+	<script>
 	typeNameReplacements := nil
 ]
 
@@ -39,48 +41,56 @@ TypeMe class >> typeNameReplacements [
 
 	^ typeNameReplacements ifNil: [
 			  typeNameReplacements := {
-				                          ('True' -> 'Boolean').
-				                          ('False' -> 'Boolean').
-				                          ('ByteString' -> 'String').
-				                          ('ByteSymbol' -> 'String').
-				                          ('WideString' -> 'String').
-				                          ('WideSymbol' -> 'String').
-				                          ('BoxedFloat64' -> 'Float').
-				                          ('SmallFloat64' -> 'Float').
-				                          ('LargeNegativeInteger' -> 'Integer').
-				                          ('LargePositiveInteger' -> 'Integer').
-				                          ('LargeInteger' -> 'Integer').
-				                          ('SmallInteger' -> 'Integer') }
+				                          (#True -> #Boolean).
+				                          (#False -> #Boolean).
+				                          (#ByteString -> #String).
+				                          (#ByteSymbol -> #String).
+				                          (#WideString -> #String).
+				                          (#WideSymbol -> #String).
+				                          (#BoxedFloat64 -> #Float).
+				                          (#SmallFloat64 -> #Float).
+				                          (#LargeNegativeInteger -> #Integer).
+				                          (#LargePositiveInteger -> #Integer).
+				                          (#LargeInteger -> #Integer).
+				                          (#SmallInteger -> #Integer) }
 				                          asDictionary ]
 ]
 
 { #category : 'analyzing' }
-TypeMe >> addToResults: typeCollection [
+TypeMe >> addToResults: anArray [
+
+	((typeResults at: anArray first ifAbsentPut: Dictionary new)
+		 at: anArray second
+		 ifAbsentPut: Dictionary new)
+		at: anArray third
+		ifPresent: [ :existingType |
+				existingType = anArray fourth ifFalse: [
+					conflicts add: (anArray copyWith: existingType) ] ]
+		ifAbsentPut: anArray fourth
+]
+
+{ #category : 'analyzing' }
+TypeMe >> addToResultsAll: typeCollection [
 
 	| typesToProcess |
 	typesToProcess := typeCollection asOrderedCollection.
 	[ typesToProcess isNotEmpty ] whileTrue: [
-			| array methodArray |
-			array := typesToProcess removeLast.
-			methodArray := array first: 3.
-			typeResults
-				detect: [ :any | (any first: 3) = methodArray ]
-				ifFound: [ :existingArray |
-						self
-							assert: existingArray fourth = array fourth
-							description:
-								'Method ' , methodArray asString , ' has 2 different types: "'
-								, existingArray fourth , '" and "' , array fourth , '"' ]
-				ifNone: [ "new item" typeResults add: array ] ]
+		self addToResults: typesToProcess removeLast ]
 ]
 
 { #category : 'aggregating' }
 TypeMe >> assertValidName: aName [
 
-	self assert: (aName isKindOf: String).
+	self assert: (aName isKindOf: Symbol).
 	self assert: aName isNotEmpty.
-	self assert: aName ~= 'UndefinedObject'.
-	self assert: aName ~= 'nil'
+	self assert: aName ~= #nil
+]
+
+{ #category : 'aggregating' }
+TypeMe >> assertValidTypeName: aName [
+
+	self assert: aName ~= #UndefinedObject.
+	self assertValidName: aName
 ]
 
 { #category : 'accessing' }
@@ -218,17 +228,24 @@ TypeMe >> format: aCollection withType: aType [
 { #category : 'aggregating' }
 TypeMe >> formatPackage: aPackageName class: aClassName selector: aSelector type: aTypeName [
 
-	| typeName |
-	typeName := self replaceTypeName: aTypeName.
-	self assertValidName: aPackageName.
-	self assertValidName: aClassName.
-	self assertValidName: aSelector.
-	self assertValidName: typeName.
+	| packageSymbol classSymbol selectorSymbol typeSymbol |
+	packageSymbol := aPackageName asSymbol.
+	classSymbol := aClassName asSymbol.
+	selectorSymbol := aSelector asSymbol.
+	typeSymbol := (self replaceTypeName: aTypeName) asSymbol.
+
+	self assertValidName: packageSymbol.
+	self assertValidName: classSymbol.
+	self assertValidName: selectorSymbol.
+	classSymbol = #UndefinedObject
+		ifTrue: [ self assertValidName: typeSymbol ]
+		ifFalse: [ self assertValidTypeName: typeSymbol ].
+
 	^ {
-		  aPackageName.
-		  aClassName.
-		  aSelector.
-		  typeName }
+		  packageSymbol.
+		  classSymbol.
+		  selectorSymbol.
+		  typeSymbol }
 ]
 
 { #category : 'aggregating' }
@@ -254,7 +271,8 @@ TypeMe >> getClassName: method [
 TypeMe >> initialize: methodsCollection [
 
 	inputMethods := methodsCollection.
-	typeResults := OrderedCollection new
+	typeResults := Dictionary new.
+	conflicts := OrderedCollection new
 ]
 
 { #category : 'instance creation' }
@@ -357,9 +375,6 @@ TypeMe >> methodsReturnLiteralNode [
 				satisfy: [ :eachReturn |
 				ASTHelper ifReturnReturnsLiteralNode: eachReturn ]
 				do: [ :return |
-						self haltIf: [
-							(ASTHelper getReturnLiteralNode: return) className
-							= 'UndefinedObject' ].
 						literalToMethod add:
 							(ASTHelper getReturnLiteralNode: return) className -> method ] ].
 
@@ -421,7 +436,7 @@ TypeMe >> methodsReturnSelfNew [
 	results ifEmpty: [ ^ {  } ].
 	^ self
 		  format: results
-		  withType: results anyOne methodClass soleInstance
+		  withType: results anyOne methodClass soleInstance name
 ]
 
 { #category : 'heuristics' }
@@ -474,6 +489,7 @@ TypeMe >> printToCSV: typeCollection [
 
 { #category : 'aggregating' }
 TypeMe >> replaceTypeName: aTypeName [
+	"Replace too specific types like True -> Boolean"
 
 	^ self class replacementFor: aTypeName
 ]
@@ -484,9 +500,10 @@ TypeMe >> runHeuristics [
 	(self class selectorsInProtocol: 'heuristics') do: [ :method |
 			| methodResult |
 			methodResult := self perform: method.
-			self addToResults: methodResult ].
+			self addToResultsAll: methodResult ].
 
-	^ typeResults
+	conflicts ifNotEmpty: #inspect.
+	^ self typeResultArrays
 ]
 
 { #category : 'instance creation' }
@@ -508,4 +525,28 @@ TypeMe >> statistics [
 								    printShowingDecimalPlaces: 2)) } ]
 		  ifNil: [
 		  ^ Warning signal: 'Run type extraction to get statistics' ]
+]
+
+{ #category : 'aggregating' }
+TypeMe >> typeResultArrays [
+
+	| resultArrays |
+	resultArrays := SortedCollection sortBlock: [ :a :b |
+			                a first = b first
+				                ifTrue: [
+						                a second = b second
+							                ifTrue: [ a third < b third ]
+							                ifFalse: [ a second < b second ] ]
+				                ifFalse: [ a first < b first ] ].
+
+	typeResults keysAndValuesDo: [ :packageName :resultsInPackage |
+			resultsInPackage keysAndValuesDo: [ :className :resultsInClass |
+					resultsInClass keysAndValuesDo: [ :selector :type |
+							resultArrays add: {
+									packageName.
+									className.
+									selector.
+									type } ] ] ].
+
+	^ resultArrays
 ]
