@@ -53,10 +53,10 @@ ASTHelper class >> ifAllReturnsOf: aMethodNode satisfy: conditionBlock do: actio
 	returns := self getReturns: aMethodNode.
 
 	matchingReturn := returns detect: conditionBlock ifNone: [ ^ self ].
-	returns do: [ :eachReturn |
-			((conditionBlock value: eachReturn) or: [
-				 self isNilValue: eachReturn value ]) ifTrue: [
-				^ actionBlock value: matchingReturn ] ]
+	(returns allSatisfy: [ :eachReturn |
+			 (conditionBlock value: eachReturn) or: [
+				 self isNilValue: eachReturn value ] ]) ifFalse: [ ^ self ].
+	^ actionBlock value: matchingReturn
 ]
 
 { #category : 'testing' }
