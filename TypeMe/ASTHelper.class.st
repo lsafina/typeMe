@@ -26,17 +26,37 @@ ASTHelper class >> getReturnLiteralNode: aReturn [
 ]
 
 { #category : 'accessing' }
+ASTHelper class >> getReturns: aMethodNode [
+	"assuming that necessary checks of ifReturnReturnsClassNew has been made"
+
+	| returns |
+	returns := aMethodNode allStatements select: [ :st | st isReturn ].
+	aMethodNode lastIsReturn ifTrue: [ ^ returns ].
+	^ returns , { ((OCReturnNode value: (OCVariableNode selfNode
+				     variable: SelfVariable new;
+				     yourself))
+		   parent: aMethodNode body;
+		   yourself) }
+]
+
+{ #category : 'accessing' }
 ASTHelper class >> getSingleReturn: aMethod [
 	"assuming that necessary checks of ifReturnReturnsClassNew has been made"
 
 	^ (aMethod ast allStatements select: [ :st | st isReturn ]) first
 ]
 
-{ #category : 'testing' }
-ASTHelper class >> ifMethodHasOneReturnStatement: methodAST [
+{ #category : 'accessing' }
+ASTHelper class >> ifAllReturnsOf: aMethodNode satisfy: conditionBlock do: actionBlock [
 
- ^ (methodAST allStatements select: [ :st | st isReturn ]) size = 1
-	
+	| returns matchingReturn |
+	returns := self getReturns: aMethodNode.
+
+	matchingReturn := returns detect: conditionBlock ifNone: [ ^ self ].
+	(returns allSatisfy: [ :eachReturn |
+			 (conditionBlock value: eachReturn) or: [
+				 self isNilValue: eachReturn value ] ]) ifFalse: [ ^ self ].
+	^ actionBlock value: matchingReturn
 ]
 
 { #category : 'testing' }
@@ -46,14 +66,10 @@ ASTHelper class >> ifMethodHasReturnStatements: methodAST [
 ]
 
 { #category : 'testing' }
-ASTHelper class >> ifMethodReturnOnlyNil: methodAST [
+ASTHelper class >> ifMethodReturnOnlyNil: aMethodNode [
 
-	| res  |
-	
-	res := methodAST allStatements select: [ :st | st isReturn ].
-	res size = 1 ifTrue: [ ^ self isNilValue: res first value ].
-
-	^ false
+	^ (self getReturns: aMethodNode) allSatisfy: [ :each |
+		  self isNilValue: each value ]
 ]
 
 { #category : 'accessing' }
@@ -81,7 +97,7 @@ ASTHelper class >> ifReturnReturnsClassNew: aReturn [
 { #category : 'accessing' }
 ASTHelper class >> ifReturnReturnsLiteralNode: aReturn [
 
-	^ aReturn value class = OCLiteralValueNode
+	^ aReturn value isLiteralNode and: [ aReturn value value isNotNil ]
 ]
 
 { #category : 'accessing' }
