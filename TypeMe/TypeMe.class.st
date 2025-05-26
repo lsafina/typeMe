@@ -25,15 +25,41 @@ Class {
 }
 
 { #category : 'as yet unclassified' }
-TypeMe class >> getTypeForClass: aClass method: aCompiledMethod [
+TypeMe class >> getAITypeForClass: className method: methodSelector [
 
 	| typeName |
-	typeName := (((typeResults at: aClass name ifAbsent: [ ^ '' ])
+	typeName := TypeWithAI askOpenAI:
+		            'In Pharo programming language what is the type of the method '
+		            , methodSelector , ' of the class ' , className
+		            ,
+		            '. Answer with one word'.
+
+	typeName = 'Unknown'
+		ifTrue: [ ^ '' ]
+		ifFalse: [ ^ '(type (AI-guess): ' , typeName , ' )' ]
+]
+
+{ #category : 'as yet unclassified' }
+TypeMe class >> getPrecomputedTypeForClass: className method: methodSelector [
+	
+	|typeName|
+	typeName := (((typeResults at: className ifAbsent: [ ^ '' ])
 		              groupedBy: [ :e | e third ])
-		             at: aCompiledMethod selector
+		             at: methodSelector 
 		             ifAbsent: [ ^ '' ]) first fourth.
 
 	^ '(type: ' , typeName , ' )'
+]
+
+{ #category : 'as yet unclassified' }
+TypeMe class >> getTypeForClass: aClass method: aCompiledMethod [
+
+	| typeName className methodSelector |
+	className := aClass name.
+	methodSelector := aCompiledMethod selector.
+
+	typeName := self getPrecomputedTypeForClass: className method: methodSelector.
+	(typeName = '') ifTrue: [  ^ self getAITypeForClass: className method: methodSelector  ] ifFalse: [ ^ typeName ]
 ]
 
 { #category : 'utilities' }
