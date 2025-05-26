@@ -16,12 +16,25 @@ Class {
 		'conflicts'
 	],
 	#classInstVars : [
-		'typeNameReplacements'
+		'typeNameReplacements',
+		'typeResults'
 	],
 	#category : 'TypeMe-Objects',
 	#package : 'TypeMe',
 	#tag : 'Objects'
 }
+
+{ #category : 'as yet unclassified' }
+TypeMe class >> getTypeForClass: aClass method: aCompiledMethod [
+
+	| typeName |
+	typeName := (((typeResults at: aClass name ifAbsent: [ ^ '' ])
+		              groupedBy: [ :e | e third ])
+		             at: aCompiledMethod selector
+		             ifAbsent: [ ^ '' ]) first fourth.
+
+	^ '(type: ' , typeName , ' )'
+]
 
 { #category : 'utilities' }
 TypeMe class >> replacementFor: aTypeName [
@@ -54,6 +67,18 @@ TypeMe class >> typeNameReplacements [
 				                          (#LargeInteger -> #Integer).
 				                          (#SmallInteger -> #Integer) }
 				                          asDictionary ]
+]
+
+{ #category : 'utilities' }
+TypeMe class >> typeResults [
+
+	^ typeResults ifNil: [
+		  typeResults := (TITMethodReturnTypesGatherer arraysFromFile:
+			                  (FileLocator
+				                   fromPath:
+				                   'pharo-local/iceberg/lsafina/typeMe/types.csv'
+					                   asPath
+				                   ifNone: [  ])) groupedBy: [ :e | e second ] ]
 ]
 
 { #category : 'analyzing' }
