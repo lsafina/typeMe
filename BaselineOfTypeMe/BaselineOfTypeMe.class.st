@@ -16,7 +16,7 @@ BaselineOfTypeMe >> baseline: spec [
 		spec
 			baseline: 'TypeInfoTools'
 			with: [
-			spec repository: 'github://JanBliznicenko/TypeInfoTools:main' ].
+			spec repository: 'github://JanBliznicenko/TypeInfoTools:main'; loads: #(dev) ].
 
 		spec
 			baseline: 'NeoCSV'
