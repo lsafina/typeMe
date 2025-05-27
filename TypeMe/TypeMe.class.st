@@ -144,13 +144,6 @@ TypeMe >> assertValidName: aName [
 	self assert: aName ~= #nil
 ]
 
-{ #category : 'aggregating' }
-TypeMe >> assertValidTypeName: aName [
-
-	self assert: aName ~= #UndefinedObject.
-	self assertValidName: aName
-]
-
 { #category : 'accessing' }
 TypeMe >> environment [
 
@@ -295,9 +288,7 @@ TypeMe >> formatPackage: aPackageName class: aClassName selector: aSelector type
 	self assertValidName: packageSymbol.
 	self assertValidName: classSymbol.
 	self assertValidName: selectorSymbol.
-	classSymbol = #UndefinedObject
-		ifTrue: [ self assertValidName: typeSymbol ]
-		ifFalse: [ self assertValidTypeName: typeSymbol ].
+	self assertValidName: typeSymbol.
 
 	^ {
 		  packageSymbol.
@@ -443,13 +434,10 @@ TypeMe >> methodsReturnLiteralNode [
 TypeMe >> methodsReturnNil [
 	"collects method that have only one return statement which returns nil (^ nil)"
 
-	"^ self
+	^ self
 		  format: (inputMethods select: [ :method |
 				   ASTHelper ifMethodReturnOnlyNil: method ast ])
-		  withType: nil"
-
-	self flag: 'Jan: do we really want to use nil as a return type?'.
-	^ {  }
+		  withType: #UndefinedObject
 ]
 
 { #category : 'heuristics' }
