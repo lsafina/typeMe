@@ -149,7 +149,6 @@ TypeMeTest >> testMethodsReturnLiteralNode [
 TypeMeTest >> testMethodsReturnNil [
 
 	| result |
-	self skip.
 	TypeMeTestHelper
 		installTestMethods:
 			(OrderedCollection newFrom: { 'returnOneNil self yourself. ^ nil'.
@@ -164,11 +163,13 @@ TypeMeTest >> testMethodsReturnNil [
 	typer extractTypesForPackage: 'TypeMe-TestPackage-ReturnOneNil'.
 	result := typer methodsReturnNil.
 
-	self assert: result size equals: 1.
+	self assert: result size equals: 2.
 	self
 		assert: (result collect: [ :a | a third ]) first
 		equals: 'returnOneNil'.
-	self assert: (result collect: [ :a | a fourth ]) first equals: nil.
+	self
+		assert: (result collect: [ :a | a fourth ]) first
+		equals: #UndefinedObject.
 
 	TypeMeTestHelper cleanTestEnvironment: testEnvironment
 ]
