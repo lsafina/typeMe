@@ -24,7 +24,7 @@ BaselineOfTypeMe >> baseline: spec [
 			
 		spec
 			baseline: 'LLMAPI'
-			with: [ spec repository: 'github://Evref-BL/Pharo-LLMAPI' ].
+			with: [ spec repository: 'github://Evref-BL/Pharo-LLMAPI:main' ].
 
 		spec
 			package: #TypeMe
