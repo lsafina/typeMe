@@ -515,13 +515,18 @@ TypeMe >> print: typeCollection to: aFormat [
 ]
 
 { #category : 'printing' }
-TypeMe >> printToCSV: typeCollection [
+TypeMe >> printToCSV: aTypeCollection [
 
-	| typesFile fileReference |
-	typesFile := FileLocator
-		             fromPath: 'pharo-local/iceberg/typeMe/types.csv' asPath
-		             ifNone: [ ].
-	fileReference := typesFile asFileReference.
+	self
+		printToCSV: aTypeCollection
+		atPath: 'pharo-local/iceberg/typeMe/types.csv'
+]
+
+{ #category : 'printing' }
+TypeMe >> printToCSV: aTypeCollection atPath: aPath [
+
+	| fileReference |
+	fileReference := aPath asFileReference.
 	fileReference ensureDelete.
 	fileReference writeStreamDo: [ :stream |
 			ZnBufferedWriteStream
@@ -530,7 +535,7 @@ TypeMe >> printToCSV: typeCollection [
 						| writer |
 						writer := NeoCSVWriter on: out.
 						writer writeHeader: { #Package. #Class. #Selector. #Types }.
-						typeCollection do: [ :each | writer nextPut: each ] ] ]
+						aTypeCollection do: [ :each | writer nextPut: each ] ] ]
 ]
 
 { #category : 'aggregating' }
