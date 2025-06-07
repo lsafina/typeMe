@@ -553,8 +553,9 @@ TypeMe >> runHeuristics [
 			methodResult := self perform: method.
 			self addToResultsAll: methodResult ].
 
-	conflicts ifNotEmpty: #inspect.
-	^ self typeResultArrays
+	^ TypeMeResults
+		  withResults: self typeResultArrays
+		  conflicts: conflicts
 ]
 
 { #category : 'instance creation' }
