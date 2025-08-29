@@ -14,7 +14,7 @@ Class {
 TypeMeResults class >> withResults: typeResultsCollection conflicts: conflictsCollection [
 
 	^ self new
-		  results: typeResultsCollection;
+		  typeResults: typeResultsCollection;
 		  conflicts: conflictsCollection;
 		  yourself
 ]
