@@ -16,7 +16,7 @@ BaselineOfTypeMe >> baseline: spec [
 		spec
 			baseline: 'TypeInfoTools'
 			with: [
-			spec repository: 'github://JanBliznicenko/TypeInfoTools:main' ].
+			spec repository: 'github://JanBliznicenko/TypeInfoTools:main'; loads: #(dev) ].
 
 		spec
 			baseline: 'NeoCSV'
@@ -24,7 +24,7 @@ BaselineOfTypeMe >> baseline: spec [
 			
 		spec
 			baseline: 'LLMAPI'
-			with: [ spec repository: 'github://Evref-BL/Pharo-LLMAPI' ].
+			with: [ spec repository: 'github://JanBliznicenko/Pharo-LLMAPI:main' ].
 
 		spec
 			package: #TypeMe

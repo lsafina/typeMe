@@ -144,13 +144,6 @@ TypeMe >> assertValidName: aName [
 	self assert: aName ~= #nil
 ]
 
-{ #category : 'aggregating' }
-TypeMe >> assertValidTypeName: aName [
-
-	self assert: aName ~= #UndefinedObject.
-	self assertValidName: aName
-]
-
 { #category : 'accessing' }
 TypeMe >> environment [
 
@@ -295,9 +288,7 @@ TypeMe >> formatPackage: aPackageName class: aClassName selector: aSelector type
 	self assertValidName: packageSymbol.
 	self assertValidName: classSymbol.
 	self assertValidName: selectorSymbol.
-	classSymbol = #UndefinedObject
-		ifTrue: [ self assertValidName: typeSymbol ]
-		ifFalse: [ self assertValidTypeName: typeSymbol ].
+	self assertValidName: typeSymbol.
 
 	^ {
 		  packageSymbol.
@@ -372,14 +363,11 @@ TypeMe >> methodsReturnBoolean [
 	^ self
 		  format: (OrderedCollection new
 				   addAll:
-					   ({ '^includes[A-Z].*'. '^has[A-Z].*'. '^is[A-Z].*' } flatCollect: [ :aRegex |
-							    self
-								    methods: inputMethods
-								    selectorMatchesRegex: aRegex ]);
+					   ({ '^includes[A-Z].*'. '^has[A-Z].*'. '^is[A-Z].*' }
+						    flatCollect: [ :aRegex |
+							    self methods: inputMethods selectorMatchesRegex: aRegex ]);
 				   addAll: ({ 'includes'. '=' } flatCollect: [ :aString |
-							    self
-								    methods: inputMethods
-								    selectorEqualsString: aString ]);
+							    self methods: inputMethods selectorEqualsString: aString ]);
 				   yourself)
 		  withType: #Boolean
 ]
@@ -391,14 +379,13 @@ TypeMe >> methodsReturnClass [
 	| result |
 	result := OrderedCollection new.
 	inputMethods do: [ :method |
-			ASTHelper
-				ifAllReturnsOf: method ast
-				satisfy: [ :eachReturn |
-				ASTHelper ifReturnReturnsClass: eachReturn ]
-				do: [ :return |
-						result add:
-							(ASTHelper getClassFromReturnNew: return) , ' class' -> method ] ].
-
+		ASTHelper
+			ifAllReturnsOf: method ast
+			satisfy: [ :eachReturn |
+			ASTHelper ifReturnReturnsClass: eachReturn ]
+			do: [ :return |
+				result add:
+					(ASTHelper getClassFromReturnNew: return) , ' class' -> method ] ].
 	^ self format: result
 ]
 
@@ -409,14 +396,13 @@ TypeMe >> methodsReturnClassNew [
 	| result |
 	result := OrderedCollection new.
 	inputMethods do: [ :method |
-			ASTHelper
-				ifAllReturnsOf: method ast
-				satisfy: [ :eachReturn |
-				ASTHelper ifReturnReturnsClassNew: eachReturn ]
-				do: [ :return |
-					result add:
-						(ASTHelper getClassNameFromReturnNew: return) -> method ] ].
-
+		ASTHelper
+			ifAllReturnsOf: method ast
+			satisfy: [ :eachReturn |
+			ASTHelper ifReturnReturnsClassNew: eachReturn ]
+			do: [ :return |
+				result add:
+					(ASTHelper getClassNameFromReturnNew: return) -> method ] ].
 	^ self format: result
 ]
 
@@ -428,14 +414,13 @@ TypeMe >> methodsReturnLiteralNode [
 	literalToMethod := OrderedCollection new.
 
 	inputMethods do: [ :method |
-			ASTHelper
-				ifAllReturnsOf: method ast
-				satisfy: [ :eachReturn |
-				ASTHelper ifReturnReturnsLiteralNode: eachReturn ]
-				do: [ :return |
-						literalToMethod add:
-							(ASTHelper getReturnLiteralNode: return) className -> method ] ].
-
+		ASTHelper
+			ifAllReturnsOf: method ast
+			satisfy: [ :eachReturn |
+			ASTHelper ifReturnReturnsLiteralNode: eachReturn ]
+			do: [ :return |
+				literalToMethod add:
+					(ASTHelper getReturnLiteralNode: return) className -> method ] ].
 	^ self format: literalToMethod
 ]
 
@@ -443,13 +428,10 @@ TypeMe >> methodsReturnLiteralNode [
 TypeMe >> methodsReturnNil [
 	"collects method that have only one return statement which returns nil (^ nil)"
 
-	"^ self
+	^ self
 		  format: (inputMethods select: [ :method |
 				   ASTHelper ifMethodReturnOnlyNil: method ast ])
-		  withType: nil"
-
-	self flag: 'Jan: do we really want to use nil as a return type?'.
-	^ {  }
+		  withType: #UndefinedObject
 ]
 
 { #category : 'heuristics' }
@@ -458,9 +440,7 @@ TypeMe >> methodsReturnNumber [
 
 	^ self
 		  format: ({ 'size'. 'priority' } flatCollect: [ :aString |
-				   self
-					   methods: inputMethods
-					   selectorEqualsString: aString ])
+				   self methods: inputMethods selectorEqualsString: aString ])
 		  withType: #Number
 ]
 
@@ -470,11 +450,12 @@ TypeMe >> methodsReturnSelf [
 	| results |
 	results := OrderedCollection new.
 	inputMethods do: [ :method |
-			method isAbstract ifFalse: [
-					ASTHelper
-						ifAllReturnsOf: method ast
-						satisfy: [ :eachReturn | eachReturn value isSelfVariable ]
-						do: [ :return | results add: method ] ] ].
+		method isAbstract ifFalse: [
+			ASTHelper
+				ifAllReturnsOf: method ast
+				satisfy: [ :eachReturn | eachReturn value isSelfVariable ]
+				do: [ :return | results add: method ] ] ].
+
 	^ self formatWithSelf: results
 ]
 
@@ -485,13 +466,14 @@ TypeMe >> methodsReturnSelfNew [
 	| results |
 	results := OrderedCollection new.
 	inputMethods do: [ :method |
-			method isClassSide ifTrue: [
-					ASTHelper
-						ifAllReturnsOf: method ast
-						satisfy: [ :eachReturn |
-						ASTHelper ifReturnReturnsSelfNew: eachReturn ]
-						do: [ :return | results add: method ] ] ].
+		method isClassSide ifTrue: [
+			ASTHelper
+				ifAllReturnsOf: method ast
+				satisfy: [ :eachReturn |
+				ASTHelper ifReturnReturnsSelfNew: eachReturn ]
+				do: [ :return | results add: method ] ] ].
 	results ifEmpty: [ ^ {  } ].
+
 	^ self
 		  format: results
 		  withType: results anyOne methodClass soleInstance name
@@ -512,9 +494,9 @@ TypeMe >> methodsReturnString [
 	"collect methods that we expect to return String"
 
 	^ self
-		  format:
-		  (inputMethods select: [ :method |
-			   method selector endsWith: 'String' ])
+		  format: 
+		  ( { 'String' . 'Text'} flatCollect: [:aString | inputMethods select: [ :method |
+			   method selector endsWith: aString] ])
 		  withType: #String
 ]
 
@@ -531,18 +513,18 @@ TypeMe >> printToCSV: typeCollection [
 
 	| typesFile fileReference |
 	typesFile := FileLocator
-		             fromPath: 'pharo-local/iceberg/typeMe/types.csv' asPath
-		             ifNone: [ ].
+		             fromPath: 'pharo-local/iceberg/lsafina/typeMe/types.csv' asPath
+		             ifNone: [  ].
 	fileReference := typesFile asFileReference.
 	fileReference ensureDelete.
 	fileReference writeStreamDo: [ :stream |
-			ZnBufferedWriteStream
-				on: stream
-				do: [ :out |
-						| writer |
-						writer := NeoCSVWriter on: out.
-						writer writeHeader: { #Package. #Class. #Selector. #Types }.
-						typeCollection do: [ :each | writer nextPut: each ] ] ]
+		ZnBufferedWriteStream
+			on: stream
+			do: [ :out |
+				| writer |
+				writer := NeoCSVWriter on: out.
+				writer writeHeader: { #Package. #Class. #Selector. #Types }.
+				typeCollection do: [ :each | writer nextPut: each ] ] ]
 ]
 
 { #category : 'aggregating' }
@@ -556,9 +538,9 @@ TypeMe >> replaceTypeName: aTypeName [
 TypeMe >> runHeuristics [
 
 	(self class selectorsInProtocol: 'heuristics') do: [ :method |
-			| methodResult |
-			methodResult := self perform: method.
-			self addToResultsAll: methodResult ].
+		| methodResult |
+		methodResult := self perform: method.
+		self addToResultsAll: methodResult ].
 
 	conflicts ifNotEmpty: #inspect.
 	^ self typeResultArrays
