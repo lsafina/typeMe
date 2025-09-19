@@ -509,23 +509,27 @@ TypeMe >> print: typeCollection to: aFormat [
 ]
 
 { #category : 'printing' }
-TypeMe >> printToCSV: typeCollection [
+TypeMe >> printToCSV: aTypeCollection [
 
-	| typesFile fileReference |
-	typesFile := FileLocator
-		             fromPath: 'pharo-local/iceberg/lsafina/typeMe/types.csv' asPath
-		             ifNone: [  ].
-	fileReference := typesFile asFileReference.
+	self
+		printToCSV: aTypeCollection
+		atPath: 'pharo-local/iceberg/typeMe/types.csv'
+]
+
+{ #category : 'printing' }
+TypeMe >> printToCSV: aTypeCollection atPath: aPath [
+
+	| fileReference |
+	fileReference := aPath asFileReference.
 	fileReference ensureDelete.
 	fileReference writeStreamDo: [ :stream |
-		ZnBufferedWriteStream
-			on: stream
-			do: [ :out |
-				| writer |
-				writer := NeoCSVWriter on: out.
-				writer writeHeader: { #Package. #Class. #Selector. #Types }.
-				typeCollection do: [ :each | writer nextPut: each ] ] ]
-]
+			ZnBufferedWriteStream
+				on: stream
+				do: [ :out |
+						| writer |
+						writer := NeoCSVWriter on: out.
+						writer writeHeader: { #Package. #Class. #Selector. #Types }.
+						aTypeCollection do: [ :each | writer nextPut: each ] ] ]
 
 { #category : 'aggregating' }
 TypeMe >> replaceTypeName: aTypeName [
@@ -542,8 +546,9 @@ TypeMe >> runHeuristics [
 		methodResult := self perform: method.
 		self addToResultsAll: methodResult ].
 
-	conflicts ifNotEmpty: #inspect.
-	^ self typeResultArrays
+	^ TypeMeResults
+		  withResults: self typeResultArrays
+		  conflicts: conflicts
 ]
 
 { #category : 'instance creation' }
