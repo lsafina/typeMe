@@ -530,6 +530,7 @@ TypeMe >> printToCSV: aTypeCollection atPath: aPath [
 						writer := NeoCSVWriter on: out.
 						writer writeHeader: { #Package. #Class. #Selector. #Types }.
 						aTypeCollection do: [ :each | writer nextPut: each ] ] ]
+]
 
 { #category : 'aggregating' }
 TypeMe >> replaceTypeName: aTypeName [
