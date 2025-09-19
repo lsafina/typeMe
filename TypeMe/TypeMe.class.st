@@ -363,14 +363,11 @@ TypeMe >> methodsReturnBoolean [
 	^ self
 		  format: (OrderedCollection new
 				   addAll:
-					   ({ '^includes[A-Z].*'. '^has[A-Z].*'. '^is[A-Z].*' } flatCollect: [ :aRegex |
-							    self
-								    methods: inputMethods
-								    selectorMatchesRegex: aRegex ]);
+					   ({ '^includes[A-Z].*'. '^has[A-Z].*'. '^is[A-Z].*' }
+						    flatCollect: [ :aRegex |
+							    self methods: inputMethods selectorMatchesRegex: aRegex ]);
 				   addAll: ({ 'includes'. '=' } flatCollect: [ :aString |
-							    self
-								    methods: inputMethods
-								    selectorEqualsString: aString ]);
+							    self methods: inputMethods selectorEqualsString: aString ]);
 				   yourself)
 		  withType: #Boolean
 ]
@@ -382,14 +379,13 @@ TypeMe >> methodsReturnClass [
 	| result |
 	result := OrderedCollection new.
 	inputMethods do: [ :method |
-			ASTHelper
-				ifAllReturnsOf: method ast
-				satisfy: [ :eachReturn |
-				ASTHelper ifReturnReturnsClass: eachReturn ]
-				do: [ :return |
-						result add:
-							(ASTHelper getClassFromReturnNew: return) , ' class' -> method ] ].
-
+		ASTHelper
+			ifAllReturnsOf: method ast
+			satisfy: [ :eachReturn |
+			ASTHelper ifReturnReturnsClass: eachReturn ]
+			do: [ :return |
+				result add:
+					(ASTHelper getClassFromReturnNew: return) , ' class' -> method ] ].
 	^ self format: result
 ]
 
@@ -400,14 +396,13 @@ TypeMe >> methodsReturnClassNew [
 	| result |
 	result := OrderedCollection new.
 	inputMethods do: [ :method |
-			ASTHelper
-				ifAllReturnsOf: method ast
-				satisfy: [ :eachReturn |
-				ASTHelper ifReturnReturnsClassNew: eachReturn ]
-				do: [ :return |
-					result add:
-						(ASTHelper getClassNameFromReturnNew: return) -> method ] ].
-
+		ASTHelper
+			ifAllReturnsOf: method ast
+			satisfy: [ :eachReturn |
+			ASTHelper ifReturnReturnsClassNew: eachReturn ]
+			do: [ :return |
+				result add:
+					(ASTHelper getClassNameFromReturnNew: return) -> method ] ].
 	^ self format: result
 ]
 
@@ -419,14 +414,13 @@ TypeMe >> methodsReturnLiteralNode [
 	literalToMethod := OrderedCollection new.
 
 	inputMethods do: [ :method |
-			ASTHelper
-				ifAllReturnsOf: method ast
-				satisfy: [ :eachReturn |
-				ASTHelper ifReturnReturnsLiteralNode: eachReturn ]
-				do: [ :return |
-						literalToMethod add:
-							(ASTHelper getReturnLiteralNode: return) className -> method ] ].
-
+		ASTHelper
+			ifAllReturnsOf: method ast
+			satisfy: [ :eachReturn |
+			ASTHelper ifReturnReturnsLiteralNode: eachReturn ]
+			do: [ :return |
+				literalToMethod add:
+					(ASTHelper getReturnLiteralNode: return) className -> method ] ].
 	^ self format: literalToMethod
 ]
 
@@ -446,9 +440,7 @@ TypeMe >> methodsReturnNumber [
 
 	^ self
 		  format: ({ 'size'. 'priority' } flatCollect: [ :aString |
-				   self
-					   methods: inputMethods
-					   selectorEqualsString: aString ])
+				   self methods: inputMethods selectorEqualsString: aString ])
 		  withType: #Number
 ]
 
@@ -458,11 +450,12 @@ TypeMe >> methodsReturnSelf [
 	| results |
 	results := OrderedCollection new.
 	inputMethods do: [ :method |
-			method isAbstract ifFalse: [
-					ASTHelper
-						ifAllReturnsOf: method ast
-						satisfy: [ :eachReturn | eachReturn value isSelfVariable ]
-						do: [ :return | results add: method ] ] ].
+		method isAbstract ifFalse: [
+			ASTHelper
+				ifAllReturnsOf: method ast
+				satisfy: [ :eachReturn | eachReturn value isSelfVariable ]
+				do: [ :return | results add: method ] ] ].
+
 	^ self formatWithSelf: results
 ]
 
@@ -473,13 +466,14 @@ TypeMe >> methodsReturnSelfNew [
 	| results |
 	results := OrderedCollection new.
 	inputMethods do: [ :method |
-			method isClassSide ifTrue: [
-					ASTHelper
-						ifAllReturnsOf: method ast
-						satisfy: [ :eachReturn |
-						ASTHelper ifReturnReturnsSelfNew: eachReturn ]
-						do: [ :return | results add: method ] ] ].
+		method isClassSide ifTrue: [
+			ASTHelper
+				ifAllReturnsOf: method ast
+				satisfy: [ :eachReturn |
+				ASTHelper ifReturnReturnsSelfNew: eachReturn ]
+				do: [ :return | results add: method ] ] ].
 	results ifEmpty: [ ^ {  } ].
+
 	^ self
 		  format: results
 		  withType: results anyOne methodClass soleInstance name
@@ -500,9 +494,9 @@ TypeMe >> methodsReturnString [
 	"collect methods that we expect to return String"
 
 	^ self
-		  format:
-		  (inputMethods select: [ :method |
-			   method selector endsWith: 'String' ])
+		  format: 
+		  ( { 'String' . 'Text'} flatCollect: [:aString | inputMethods select: [ :method |
+			   method selector endsWith: aString] ])
 		  withType: #String
 ]
 
@@ -536,7 +530,6 @@ TypeMe >> printToCSV: aTypeCollection atPath: aPath [
 						writer := NeoCSVWriter on: out.
 						writer writeHeader: { #Package. #Class. #Selector. #Types }.
 						aTypeCollection do: [ :each | writer nextPut: each ] ] ]
-]
 
 { #category : 'aggregating' }
 TypeMe >> replaceTypeName: aTypeName [
@@ -549,9 +542,9 @@ TypeMe >> replaceTypeName: aTypeName [
 TypeMe >> runHeuristics [
 
 	(self class selectorsInProtocol: 'heuristics') do: [ :method |
-			| methodResult |
-			methodResult := self perform: method.
-			self addToResultsAll: methodResult ].
+		| methodResult |
+		methodResult := self perform: method.
+		self addToResultsAll: methodResult ].
 
 	^ TypeMeResults
 		  withResults: self typeResultArrays
