@@ -31,6 +31,18 @@ TypeMeResults >> conflicts: conflictCollection [
 	conflicts := conflictCollection
 ]
 
+{ #category : 'as yet unclassified' }
+TypeMeResults >> resultsWithoutConflicts [
+
+	| prefixesToRemove prefixSize |
+
+	prefixSize := 3.
+	prefixesToRemove :=
+    (conflicts collect: [:arr | arr copyFrom: 1 to: prefixSize]) asSet.
+	^ typeResults reject: [:arr |
+    prefixesToRemove includes: (arr copyFrom: 1 to: prefixSize)].
+]
+
 { #category : 'accessing' }
 TypeMeResults >> typeResults [
 

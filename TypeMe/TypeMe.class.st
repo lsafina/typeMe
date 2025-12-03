@@ -13,7 +13,8 @@ Class {
 		'environment',
 		'inputMethods',
 		'typeResults',
-		'conflicts'
+		'conflicts',
+		'heuristics'
 	],
 	#classInstVars : [
 		'typeNameReplacements',
@@ -316,12 +317,24 @@ TypeMe >> getClassName: method [
 	^ method methodClass name
 ]
 
+{ #category : 'accessing' }
+TypeMe >> heuristics [
+
+	^ heuristics
+]
+
+{ #category : 'instance creation' }
+TypeMe >> initialize [
+
+	heuristics := (self class selectorsInProtocol: 'heuristics').
+]
+
 { #category : 'instance creation' }
 TypeMe >> initialize: methodsCollection [
 
 	inputMethods := methodsCollection.
 	typeResults := Dictionary new.
-	conflicts := OrderedCollection new
+	conflicts := OrderedCollection new.
 ]
 
 { #category : 'instance creation' }
@@ -542,10 +555,8 @@ TypeMe >> replaceTypeName: aTypeName [
 { #category : 'run' }
 TypeMe >> runHeuristics [
 
-	(self class selectorsInProtocol: 'heuristics') do: [ :method |
-		| methodResult |
-		methodResult := self perform: method.
-		self addToResultsAll: methodResult ].
+	heuristics do: [ :method |
+		self addToResultsAll: (self perform: method) ].
 
 	^ TypeMeResults
 		  withResults: self typeResultArrays
