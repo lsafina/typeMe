@@ -12,11 +12,7 @@ Class {
 BaselineOfTypeMe >> baseline: spec [
 
 	<baseline>
-	spec for: #common do: [
-		spec
-			baseline: 'TypeInfoTools'
-			with: [ spec repository: 'github://JanBliznicenko/TypeInfoTools:main'; loads: #(returntypes) ].
-			
+	spec for: #common do: [			
 		spec
 			baseline: 'NeoCSV'
 			with: [ spec repository: 'github://svenvc/NeoCSV' ].
@@ -27,7 +23,7 @@ BaselineOfTypeMe >> baseline: spec [
 
 		spec
 			package: #TypeMe
-			with: [ spec requires: #( 'TypeInfoTools' 'NeoCSV' 'LLMAPI' ) ];
+			with: [ spec requires: #( 'NeoCSV' 'LLMAPI' ) ];
 			package: #'TypeMe-Tests' with: [ spec requires: #( 'TypeMe' ) ].
 		spec
 			group: 'Core' with: #( 'TypeMe' 'TypeMe-Tests' );
